@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		321E87EEAD788ED1C94ABD4A /* Dylibifier.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */; };
 		342787552E787EBB003A3C2F /* Keymapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 342787542E787EB9003A3C2F /* Keymapping.swift */; };
 		3447B5E52E28B46800FAA22F /* KeymapViewVM.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3447B5E42E28B46800FAA22F /* KeymapViewVM.swift */; };
 		34775E752D493B59001586C2 /* CachedAsyncImageWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34775E742D493B54001586C2 /* CachedAsyncImageWrapper.swift */; };
@@ -16,6 +17,7 @@
 		365AFB0828847B75008B3542 /* Sparkle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365AFB0728847B75008B3542 /* Sparkle.swift */; };
 		3665EF8928832400007CF915 /* PlayCoverSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3665EF8828832400007CF915 /* PlayCoverSettingsView.swift */; };
 		36B26B97288C724600859EFD /* UpdateSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B26B96288C724600859EFD /* UpdateSettings.swift */; };
+		4A3C2001B1C2722A5F63B42E /* RuntimeKeychainSlots.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE1686277DE0EE1B934F6CF /* RuntimeKeychainSlots.swift */; };
 		5314D1EE26C402EC00A0A727 /* Shell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5314D1ED26C402EC00A0A727 /* Shell.swift */; };
 		532644DE26E79E56002EA34D /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 532644E026E79E56002EA34D /* Localizable.strings */; };
 		53D9DAF326C1849D0071959E /* PlayCoverError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D9DAF226C1849D0071959E /* PlayCoverError.swift */; };
@@ -85,6 +87,7 @@
 		B429B2642DC204FA001FF7D9 /* VersionCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = B429B2632DC204F1001FF7D9 /* VersionCheck.swift */; };
 		B44B40372C1E315600CE2A3E /* GoogleDrive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B44B40362C1E315600CE2A3E /* GoogleDrive.swift */; };
 		B44E8CD32C31C50200542038 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = B44E8CD22C31C50200542038 /* SwiftSoup */; };
+		B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */; };
 		B6603E1128E206A300DEFA3F /* UninstallSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1028E206A300DEFA3F /* UninstallSettings.swift */; };
 		B6603E1328E2257800DEFA3F /* Uninstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1228E2257800DEFA3F /* Uninstaller.swift */; };
 		B67BC7122C39354C00315011 /* UpdateScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67BC7112C39354500315011 /* UpdateScheme.swift */; };
@@ -106,6 +109,7 @@
 		365AFB0728847B75008B3542 /* Sparkle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sparkle.swift; sourceTree = "<group>"; };
 		3665EF8828832400007CF915 /* PlayCoverSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayCoverSettingsView.swift; sourceTree = "<group>"; usesTabs = 0; };
 		36B26B96288C724600859EFD /* UpdateSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateSettings.swift; sourceTree = "<group>"; };
+		4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = Dylibifier.m; path = Dependencies/iOSAppRunner/Host/Dylibifier.m; sourceTree = "<group>"; };
 		5314D1ED26C402EC00A0A727 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
 		531D717926E8313100F4A7AB /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		532644E126E79E5C002EA34D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -189,6 +193,7 @@
 		ABDAD80B298A1E3E00DC164F /* KeyCoverViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCoverViews.swift; sourceTree = "<group>"; };
 		ABED59822887A32F004D782B /* MenuBarView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		ABF0BA1A285F9ED200FC5259 /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AFE1686277DE0EE1B934F6CF /* RuntimeKeychainSlots.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RuntimeKeychainSlots.swift; path = PlayCover/IsolatedRuntime/RuntimeKeychainSlots.swift; sourceTree = "<group>"; };
 		B1084E1E28AA80F400E399FA /* AppSettingsVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsVM.swift; sourceTree = "<group>"; };
 		B1419FB528BA82EE000CB69F /* DiscordActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscordActivity.swift; sourceTree = "<group>"; };
 		B17FD03828C70BAE00B1D4CA /* CoreUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreUI.framework; path = /System/Library/PrivateFrameworks/CoreUI.framework; sourceTree = "<group>"; };
@@ -207,6 +212,7 @@
 		B68FD80C2ACB642100683778 /* PlayAppExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayAppExtensions.swift; sourceTree = "<group>"; };
 		B6AB53C829232B4F00039B2E /* KeyCodeNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCodeNames.swift; sourceTree = "<group>"; };
 		B6ABDA292971EEF700A46E80 /* ProgressVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressVM.swift; sourceTree = "<group>"; };
+		E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IsolatedRuntime.swift; path = PlayCover/IsolatedRuntime/IsolatedRuntime.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -395,6 +401,7 @@
 				8783CFF926B8C52D00171041 /* PlayCover */,
 				8783CFF826B8C52D00171041 /* Products */,
 				53841CC826D9D7920021D27C /* Frameworks */,
+				F00433939D4A19EB552E1918 /* IsolatedRuntime */,
 			);
 			sourceTree = "<group>";
 		};
@@ -446,6 +453,16 @@
 			path = Rules;
 			sourceTree = "<group>";
 		};
+		F00433939D4A19EB552E1918 /* IsolatedRuntime */ = {
+			isa = PBXGroup;
+			children = (
+				E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */,
+				4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */,
+				AFE1686277DE0EE1B934F6CF /* RuntimeKeychainSlots.swift */,
+			);
+			name = IsolatedRuntime;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -460,6 +477,7 @@
 				AA818CBC287AC1C6000BEE9D /* Copy Carthage frameworks */,
 				AAC28F222899A05B005057FB /* Codesign sparkle */,
 				36E7AB27288A0B64004C0C3A /* SwiftLint */,
+				B53EAC7AAA712F2F09C38835 /* Build Isolated Runtime */,
 			);
 			buildRules = (
 			);
@@ -613,7 +631,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nIDENTITY=${EXPANDED_CODE_SIGN_IDENTITY_NAME};\n# Apple Development: XIN LI (33X85HBRP6)\necho Signing identity $IDENTITY;\n\ncodesign --verbose --force --deep --sign \"$IDENTITY\" ${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/PlayTools.framework/PlugIns/AKInterface.bundle;\ncodesign --verbose --force --deep --sign \"$IDENTITY\" ${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/PlayTools.framework;\n\n# sign sparkle\n# I still dont know if we need sparkle\nLOCATION=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\";\necho Sparkle Signing location $LOCATION;\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/Autoupdate\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/Updater.app\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/XPCServices/Downloader.xpc\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/XPCServices/Installer.xpc\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION\";\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nIDENTITY=${EXPANDED_CODE_SIGN_IDENTITY};\n# Apple Development: XIN LI (33X85HBRP6)\necho Signing identity $IDENTITY;\n\ncodesign --verbose --force --deep --sign \"$IDENTITY\" ${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/PlayTools.framework/PlugIns/AKInterface.bundle;\ncodesign --verbose --force --deep --sign \"$IDENTITY\" ${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/PlayTools.framework;\n\n# sign sparkle\n# I still dont know if we need sparkle\nLOCATION=\"${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}/Sparkle.framework\";\necho Sparkle Signing location $LOCATION;\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/Autoupdate\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/Updater.app\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/XPCServices/Downloader.xpc\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION/Versions/B/XPCServices/Installer.xpc\";\ncodesign -f -o runtime -s \"$IDENTITY\" \"$LOCATION\";\n";
 		};
 		AAE8809C287ACA4900FBB23C /* Carthage Bootstrap */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -633,6 +651,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [[ -z \"$FASTLANE\" ]]; then\n    set -euo pipefail\n    echo \"Bootstraping carthage\"\n\n    if [ -x /usr/local/bin/carthage ]; then\n        carthage=/usr/local/bin/carthage\n    elif [ -x /opt/homebrew/bin/carthage ]; then\n        carthage=/opt/homebrew/bin/carthage\n    elif [ -x /opt/local/bin/carthage ]; then\n        carthage=/opt/local/bin/carthage\n    else\n        echo \"Cannot find carthage\"\n        exit 1\n    fi\n\n    env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin $carthage update --cache-builds --use-xcframeworks\nfi\n";
+		};
+		B53EAC7AAA712F2F09C38835 /* Build Isolated Runtime */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Isolated Runtime";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "/bin/bash \"${SRCROOT}/Scripts/build-isolated-runtime.sh\"";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -715,6 +752,9 @@
 				B68FD80D2ACB642100683778 /* PlayAppExtensions.swift in Sources */,
 				9272F19E273B74C800DFBEF1 /* AppsVM.swift in Sources */,
 				923421F7275F40300030CD7D /* AppContainer.swift in Sources */,
+				B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */,
+				321E87EEAD788ED1C94ABD4A /* Dylibifier.m in Sources */,
+				4A3C2001B1C2722A5F63B42E /* RuntimeKeychainSlots.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

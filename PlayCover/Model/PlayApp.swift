@@ -64,6 +64,7 @@ class PlayApp: BaseApp {
     func launch() async {
         do {
             isStarting = true
+            defer { isStarting = false }
 
             if prohibitedToPlay {
                 await clearAllCache()
@@ -83,6 +84,12 @@ class PlayApp: BaseApp {
             // If the app does not have PlayTools, do not install PlugIns
             if hasPlayTools() {
                 try PlayTools.installPluginInIPA(url)
+            }
+
+            if settings.settings.useIsolatedRuntime {
+                removeAlias()
+                try await IsolatedRuntime.launch(self)
+                return
             }
 
             if try !Entitlements.areEntitlementsValid(app: self) {
@@ -115,7 +122,6 @@ class PlayApp: BaseApp {
                     runAppExec() // Splitting to reduce complexity
                 }
             }
-            isStarting = false
         } catch {
             Log.shared.error(error)
         }

@@ -52,6 +52,7 @@ extension PlayApp {
     }
 
     func createAlias() {
+        guard !settings.settings.useIsolatedRuntime else { return }
         do {
             try FileManager.default.createDirectory(atPath: aliasURL.path,
                                                     withIntermediateDirectories: true,

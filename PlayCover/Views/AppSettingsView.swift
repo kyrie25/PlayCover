@@ -553,10 +553,23 @@ struct BypassesView: View {
     var body: some View {
         ScrollView {
             VStack {
+                Toggle("Use isolated runtime", isOn: $settings.settings.useIsolatedRuntime)
+                    .help("Uses separate game data and a native keychain for this game. " +
+                          "Keeps PlayTools graphics and input fixes. Existing game data is not migrated.")
+                    .onChange(of: settings.settings.useIsolatedRuntime) { enabled in
+                        if enabled {
+                            settings.settings.playChain = false
+                            settings.settings.playChainDebugging = false
+                            app.removeAlias()
+                        } else {
+                            app.createAlias()
+                        }
+                    }
+                Spacer().frame(height: 20)
                 HStack(alignment: .center) {
                     Toggle("settings.playChain.enable", isOn: $settings.settings.playChain)
                         .help("settings.playChain.help")
-                        .disabled(!(hasPlayTools ?? true))
+                        .disabled(!(hasPlayTools ?? true) || settings.settings.useIsolatedRuntime)
                     Spacer()
                     Toggle("settings.playChain.debugging", isOn: $settings.settings.playChainDebugging)
                         .disabled(!settings.settings.playChain)

@@ -107,6 +107,11 @@ enum IsolatedRuntime {
             defer { try? output.close() }
             let namedRuntime = try personalizedRuntime(runtime, name: displayName, icon: icon,
                 folder: logs.appendingPathComponent(bundleIdentifier + ".noindex"))
+            // Game Mode resolves the runtime ID through LaunchServices, which
+            // otherwise prefers the generic template nested in /Applications.
+            _ = try? Shell.run(print: false, "/System/Library/Frameworks/CoreServices.framework/" +
+                               "Frameworks/LaunchServices.framework/Support/lsregister", "-u", runtime.bundleURL.path)
+            LSRegisterURL(namedRuntime as CFURL, true)
             let process = Process()
             process.executableURL = namedRuntime
                 .appendingPathComponent("Contents/MacOS").appendingPathComponent(executable.lastPathComponent)

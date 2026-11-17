@@ -61,6 +61,8 @@ For an isolated launch, `IsolatedRuntime.launch()`:
    ICNS resource derived from the rounded icon. It preserves the runtime's bundle
    identifier, profile, entitlements, and requirements, signs with the certificate
    used for the embedded runtime, and verifies the result before launch.
+   It unregisters the generic embedded template and registers the named copy
+   with LaunchServices so Game Mode's bundle-ID lookup resolves the game metadata.
 9. Releases the preparation lock and starts the personalized Catalyst executable
    with `--launch-app <bundle-id>.app` and
    `--keychain-slot <slot>`. Inherited `DYLD_*`, `MTL_*`, and `METAL_*` environment
@@ -254,8 +256,12 @@ confirmed that full-screen exit/re-entry works and that game names/icons are
 correct. A subsequent named launcher was indexed as **Blue Archive**, opened
 PlayCover and the game from a cold start, and reached the title screen. The old
 bundle-ID-named guest copy and its stale registration were removed. The tester
-confirmed the indexed app-list/Spotlight entry and the name/icon in Dock, Force
-Quit, and Game Mode. The final installed build also passed a cold-start launcher
+confirmed the indexed app-list/Spotlight entry and the name/icon in Dock and Force
+Quit. A follow-up screenshot showed Game Mode still resolving the generic embedded
+runtime. Its LaunchServices application-record lookup was reproduced and corrected
+to resolve the named copy by unregistering the embedded template; the installed
+follow-up retained that result after a fresh game launch. Overlay appearance is
+pending a manual check. The installed build also passed a cold-start launcher
 check and reached downloaded-file verification.
 
 A successful build, SwiftLint, diff checks, deep/strict signatures, and preservation

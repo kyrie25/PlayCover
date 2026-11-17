@@ -58,9 +58,11 @@ For an isolated launch, `IsolatedRuntime.launch()`:
    prevents an internal bundle-ID-named copy from appearing in app search.
 8. Copies the embedded runtime into a per-game `.noindex` directory, giving the
    copy the game's directory name, `CFBundleName`, `CFBundleDisplayName`, and an
-   ICNS resource derived from the rounded icon. It preserves the runtime's bundle
-   identifier, profile, entitlements, and requirements, signs with the certificate
-   used for the embedded runtime, and verifies the result before launch.
+   ICNS resource derived from the rounded icon. The bundle identifier in its
+   `Info.plist` is lowercased for Games' case-sensitive artwork lookup. The original
+   signed identifier, profile, entitlements, and requirements are preserved to
+   retain the runtime's sandbox and native-keychain identity. The copy is signed
+   with the embedded runtime's certificate and verified before launch.
    It unregisters the generic embedded template and registers the named copy
    with LaunchServices so Game Mode's bundle-ID lookup resolves the game metadata.
 9. Releases the preparation lock and starts the personalized Catalyst executable
@@ -74,6 +76,12 @@ bundle is refreshed from the embedded version on each launch; the installed
 PlayCover bundle is not modified. Updating only the running process's name or Dock
 image is insufficient for Dock labels, Force Quit icons, and Game Mode artwork,
 which also resolve the application bundle's identity.
+
+Games' artwork lookup can return a placeholder for a mixed-case runtime identifier
+even when LaunchServices resolves the same identifier and the icon renders through
+the native application's normalized lookup. Lowercasing only the personalized
+bundle's metadata fixes that lookup; preserving the code-signing identifier keeps
+the original container and keychain access intact.
 
 `GameLauncher.m` is a small native forwarding executable. Its indexed app bundle
 has a distinct `io.playcover.launcher.<game-id>` identifier and a proper name/icon.
@@ -261,11 +269,16 @@ Quit. A follow-up screenshot showed Game Mode still resolving the generic embedd
 runtime. Its LaunchServices application-record lookup was reproduced and corrected
 to resolve the named copy by unregistering the embedded template; the installed
 follow-up retained that result after a fresh game launch. Overlay appearance is
-confirmed for the title. The icon was still a placeholder in the existing overlay;
-an asynchronous IconServices lookup rendered the correct game artwork, and the
-overlay was restarted to refresh it. Visual confirmation of that icon is pending.
-The installed build also passed a cold-start launcher
-check and reached downloaded-file verification.
+confirmed for the title. Restarting the overlay did not fix its remaining icon
+placeholder. A case-sensitive IconServices lookup reproduced the placeholder for
+the mixed-case runtime ID and rendered the game icon for its lowercase equivalent.
+A runtime with normalized bundle metadata and its original signed identity retained
+the existing downloads/keychain slot and reached the title screen; the tester
+confirmed both the Games overlay title and icon were correct.
+The final installed build passed a cold-start launcher check, retained the original
+sandbox path, and rendered the correct icon through the normalized identifier.
+Its signed identifier, provisioning profile, and all entitlements matched the
+embedded runtime, and its deep/strict signature passed.
 
 A successful build, SwiftLint, diff checks, deep/strict signatures, and preservation
 of the original installed executable were checked. Launch-function complexity

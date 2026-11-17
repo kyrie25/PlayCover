@@ -188,14 +188,16 @@ enum IsolatedRuntime {
         // the running application's custom Dock image.
         info["CFBundleName"] = name
         info["CFBundleDisplayName"] = name
+        // Games' artwork lookup is case-sensitive, unlike LaunchServices.
+        info["CFBundleIdentifier"] = runtime.bundleIdentifier?.lowercased()
         if let icon, let icns = iconFile(icon) {
             info["CFBundleIconFile"] = "PlayCoverGame.icns"
             try icns.write(to: copy.appendingPathComponent("Contents/Resources/PlayCoverGame.icns"))
         }
         try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(to: infoURL)
-        // Retain the runtime's identity, native-keychain rights and profile.
+        // Retain the signed identifier and its sandbox/native-keychain identity.
         try Shell.run(print: false, "/usr/bin/codesign", "--force", "--sign", signingIdentity(for: runtime.bundleURL),
-                      "--preserve-metadata=entitlements,requirements,flags,runtime", copy.path)
+                      "--preserve-metadata=identifier,entitlements,requirements,flags,runtime", copy.path)
         try Shell.run(print: false, "/usr/bin/codesign", "--verify", "--deep", "--strict", copy.path)
         if fileManager.fileExists(atPath: folder.path) {
             _ = try fileManager.replaceItemAt(folder, withItemAt: staging)

@@ -45,8 +45,10 @@ class PlayTools {
         return playCoverPath
     }
 
+    private static var installation: Task<Void, Error>?
+
     static func installOnSystem() {
-        Task(priority: .background) {
+        installation = Task(priority: .background) {
             do {
                 Log.shared.log("Installing PlayTools")
 
@@ -58,19 +60,25 @@ class PlayTools {
                         attributes: [:])
                 }
 
-                // Check if a version of PlayTools is already installed, if so remove it
-                FileManager.default.delete(at: URL(fileURLWithPath: playToolsFramework.path))
-
-                // Install version of PlayTools bundled with PlayCover
+                // Finish copying before replacing the framework used by games.
                 Log.shared.log("Copying PlayTools to Frameworks")
+                let staging = frameworksURL.appendingPathComponent(UUID().uuidString + ".noindex")
+                defer { try? FileManager.default.removeItem(at: staging) }
+                try FileManager.default.copyItem(at: bundledPlayToolsFramework, to: staging)
                 if FileManager.default.fileExists(atPath: playToolsFramework.path) {
-                    try FileManager.default.removeItem(at: playToolsFramework)
+                    _ = try FileManager.default.replaceItemAt(playToolsFramework, withItemAt: staging)
+                } else {
+                    try FileManager.default.moveItem(at: staging, to: playToolsFramework)
                 }
-                try FileManager.default.copyItem(at: bundledPlayToolsFramework, to: playToolsFramework)
             } catch {
                 Log.shared.error(error)
+                throw error
             }
         }
+    }
+
+    static func waitForInstallation() async throws {
+        try await installation?.value
     }
 
     static func installInIPA(_ exec: URL) async throws {

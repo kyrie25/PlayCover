@@ -83,11 +83,12 @@ class PlayApp: BaseApp {
             // assembled before its signature is sealed over its contents.
             // If the app does not have PlayTools, do not install PlugIns
             if hasPlayTools() {
+                try await PlayTools.waitForInstallation()
                 try PlayTools.installPluginInIPA(url)
             }
 
             if settings.settings.useIsolatedRuntime {
-                removeAlias()
+                createAlias()
                 try await IsolatedRuntime.launch(self)
                 return
             }
@@ -337,6 +338,7 @@ extension PlayApp {
     }
 
     func deleteApp() {
+        if settings.settings.useIsolatedRuntime { removeAlias() }
         FileManager.default.delete(at: URL(fileURLWithPath: url.path))
         AppsVM.shared.fetchApps()
     }

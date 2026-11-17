@@ -15,13 +15,15 @@ not patch PlayTools or the upstream runtime checkout.
 
 1. Install a decrypted game through PlayCover with PlayTools injection enabled.
 2. Open the game's **Settings → Bypasses** and enable **Use isolated runtime**.
-3. Launch the game from PlayCover.
+3. Launch the game from PlayCover or its named app entry in
+   `~/Applications/PlayCover/`, including through Spotlight.
 
 The option is available for every game and defaults to off, including when reading
 settings saved before this feature existed. Compatibility remains game-dependent.
 Enabling it disables PlayChain and PlayChain debugging because the runtime supplies
-a native per-game keychain. The normal Finder alias is removed so it cannot bypass
-the runtime; disabling the option recreates the alias.
+a native per-game keychain. The normal Finder alias is replaced by a small app
+launcher that returns to PlayCover for preparation, so Finder/Spotlight launches
+use the same settings and runtime. Disabling the option restores the normal alias.
 
 The isolated runtime uses separate game data. Existing PlayCover data and PlayChain
 accounts are not migrated. Disabling the option returns to the normal launch path
@@ -51,13 +53,32 @@ For an isolated launch, `IsolatedRuntime.launch()`:
 6. Seals the prepared bundle with a local ad-hoc signature after modifying it, then
    removes `com.apple.quarantine` only from this generated copy, matching existing
    PlayCover IPA-installation behavior. Global macOS security settings are unchanged.
-7. Replaces the prepared game copy, marks the runtime's apps directory as excluded
-   from Spotlight indexing, and releases the preparation lock. The runtime acquires
-   its own guest lock for the process lifetime.
-8. Starts the embedded Catalyst executable with `--launch-app <bundle-id>.app` and
+7. Replaces the prepared game inside `apps.noindex`. On migration, unregisters and
+   removes only the old generated copy carrying PlayCover's feature marker. This
+   prevents an internal bundle-ID-named copy from appearing in app search.
+8. Copies the embedded runtime into a per-game `.noindex` directory, giving the
+   copy the game's directory name, `CFBundleName`, `CFBundleDisplayName`, and an
+   ICNS resource derived from the rounded icon. It preserves the runtime's bundle
+   identifier, profile, entitlements, and requirements, signs with the certificate
+   used for the embedded runtime, and verifies the result before launch.
+9. Releases the preparation lock and starts the personalized Catalyst executable
+   with `--launch-app <bundle-id>.app` and
    `--keychain-slot <slot>`. Inherited `DYLD_*`, `MTL_*`, and `METAL_*` environment
    overrides are filtered out. Output goes to a per-game log and nonzero exits are
    reported through PlayCover's existing error UI.
+
+The runtime acquires its own guest lock for the process lifetime. Its personalized
+bundle is refreshed from the embedded version on each launch; the installed
+PlayCover bundle is not modified. Updating only the running process's name or Dock
+image is insufficient for Dock labels, Force Quit icons, and Game Mode artwork,
+which also resolve the application bundle's identity.
+
+`GameLauncher.m` is a small native forwarding executable. Its indexed app bundle
+has a distinct `io.playcover.launcher.<game-id>` identifier and a proper name/icon.
+It opens `playcoverapp://app?action=open&bundleid=<game-id>` specifically with the
+host PlayCover app and exits. The URL handler looks up an installed library game
+and invokes its normal launch method, including when PlayCover starts cold. It
+does not execute the converted guest bundle directly.
 
 The original installed game is not replaced by the converted copy. Game data is
 stored separately from the prepared bundle, so refreshing the copy on subsequent
@@ -78,29 +99,54 @@ PlayCover settings/keymaps and the user-installed PlayTools framework, allowing
 PlayTools to continue reading the game's existing configuration.
 
 The same feature file supplies `playCoverWidth`, `playCoverHeight`, and
-`playCoverResizable` from the game's synchronized settings. A small runtime-only
-overlay observes `UIWindowDidBecomeKeyNotification`:
+`playCoverResizable` from the game's synchronized settings, plus the display name
+shown in PlayCover's library. A runtime-only overlay observes UIKit key-window
+and native window/launch notifications:
 
-- For fixed-resolution modes, it sets the Catalyst scene's minimum and maximum
-  size to the configured viewport. This prevents the native window from growing
-  beyond the fixed guest surface and exposing blank right/bottom margins.
-- For PlayCover's Resizable mode (`resolution == 6`), it leaves sizing to PlayTools,
-  including the existing optional aspect-ratio setting.
+- It removes scene size restrictions so the window can be expanded and enter
+  full screen. For fixed-resolution modes, it retains the configured guest
+  viewport and calculates a uniform scale to fit the native view. Catalyst
+  repeatedly restores its compatibility viewport and requires a positive
+  explicit scene scale, so the overlay adapts the native scene-size and scale
+  setters within the isolated process. It sets the window's content aspect ratio
+  and supplies an aspect-fitted full-screen content size through its delegate.
+  This preserves the game's proportions and lets macOS center the smaller
+  full-screen window when the display has a different aspect ratio.
+- For PlayCover's Resizable mode (`resolution == 6`), it leaves scaling and aspect
+  ratio to PlayTools, including the existing optional aspect-ratio setting.
 - It updates `NSApplication.applicationIconImage` with the guest game's icon,
   instead of leaving the shared runtime's generic icon in the Dock.
+- It supplies PlayCover's library display name to LaunchServices before AppKit
+  registers its Dock tile, and refreshes it on native window lifecycle events.
+  Guest bundle display/name values remain fallbacks.
+
+Native callbacks run on the next main-queue turn because UIKit's key-window
+notification precedes native window creation. Only content views exposing the
+native scene interface are adjusted; temporary full-screen transition windows
+are skipped. Treating those overlays as guest windows previously caused an
+unknown-key exception during full-screen entry.
 
 The icon is resolved through PlayCover's existing icon cache/extractor. The host
 renders it onto a transparent 1024×1024 canvas with an inset rounded mask and a
 subtle shadow, then stores it as `.playcover-icon.tiff` in the prepared bundle.
 The overlay uses Objective-C runtime calls for AppKit access from Catalyst.
-PlayTools screen and input hooks are not modified.
+Native scene scaling and LaunchServices naming use private platform interfaces;
+selectors and symbols are checked before use, and future macOS releases may
+require adaptation. PlayTools screen and input hooks are not modified.
+
+PlayTools installation now copies the bundled framework into a sibling staging
+directory before replacing the user framework. Game launch waits for that task
+before plugin preparation. This avoids launching against a partially copied
+framework, and an interrupted copy leaves the previous framework available.
 
 ## Storage and keychain isolation
 
 | Item | Location |
 | --- | --- |
 | Embedded executable | `PlayCover.app/Contents/Resources/Runtime-Catalyst.app` |
-| Prepared game copy | `~/Library/Containers/<runtime-bundle-id>/Data/apps/<game-id>.app` |
+| Indexed game launcher | `~/Applications/PlayCover/<game-name>.app` |
+| Prepared game copy | `~/Library/Containers/<runtime-bundle-id>/Data/apps.noindex/<game-id>.app` |
+| Personalized runtime | `~/Library/Containers/io.playcover.PlayCover/IsolatedRuntime/<game-id>.noindex/<game-name>.app` |
 | Persistent guest data | `~/Library/Containers/<runtime-bundle-id>/Data/<game-id>` |
 | Native-keychain slot registry | `~/Library/Application Support/BaseiOSApp/keychain_slots.plist` |
 | Runtime log | `~/Library/Containers/io.playcover.PlayCover/IsolatedRuntime/<game-id>-runtime.log` |
@@ -127,7 +173,8 @@ into PlayCover. A **Build Isolated Runtime** phase invokes
    metadata, without modifying the submodule.
 2. Add `PlayCoverRuntime.h` and invoke its initializer immediately after the guest
    main-bundle substitution. An explicit anchor check fails the build if the
-   upstream entry point changes and needs review.
+   upstream entry point changes and needs review. Redirect guest bundle lookup to
+   `apps.noindex` in this generated source, with a separate anchor check.
 3. Generate Catalyst-compatible entitlements, removing `homekit`,
    `increased-memory-limit`, and `inter-app-audio` capabilities. Add home-relative
    read/write access to `/Library/Containers/io.playcover.PlayCover/` and read-only
@@ -136,6 +183,8 @@ into PlayCover. A **Build Isolated Runtime** phase invokes
    shell/user variables. This prevents the parent Xcode build's package/resource
    settings from leaking into the nested build.
 5. Copy the runtime into PlayCover's resources and verify its deep/strict signature.
+6. Compile the native `GameLauncher` forwarding executable into PlayCover's
+   resources for generating indexed game entries.
 
 The existing framework/Sparkle signing phase now uses
 `EXPANDED_CODE_SIGN_IDENTITY` so it passes the selected signing identity directly
@@ -148,6 +197,9 @@ Requires Apple Silicon, Xcode with Mac Catalyst support, Carthage, SwiftLint, an
 provisioning for the runtime's native-keychain access groups. Configure signing for
 your own team. The host and embedded runtime must be provisioned consistently;
 the nested build uses automatic provisioning with `DEVELOPMENT_TEAM`.
+The same development certificate's private key must remain available locally for
+signing the personalized runtime copies. Forwarding launchers use local ad-hoc
+signatures and do not carry the runtime's restricted entitlements.
 
 ```sh
 git submodule update --init --recursive
@@ -175,12 +227,15 @@ build you distribute.
 | `.gitignore` | Ignore `build.noindex/`. |
 | `PlayCover.xcodeproj/project.pbxproj` | Compile the bridge/allocator/dylibifier, build/embed the runtime, and use the selected signing identity. |
 | `PlayCover/Model/AppSettings.swift` | Persist the default-off `useIsolatedRuntime` flag with backward-compatible decoding. |
-| `PlayCover/Model/PlayApp.swift` | Route opt-in launches after normal settings/plugin preparation and reliably clear launch state. |
-| `PlayCover/Views/AppSettingsView.swift` | Add the all-games toggle, explain separate storage, coordinate PlayChain and aliases. |
-| `PlayCover/Utils/Extensions/PlayAppExtensions.swift` | Skip normal Finder aliases for isolated games. |
-| `PlayCover/IsolatedRuntime/IsolatedRuntime.swift` | Prepare and launch guest copies, generate Dock icons, manage logs and launch errors. |
+| `PlayCover/Model/PlayApp.swift` | Wait for PlayTools installation, route opt-in launches after settings/plugin preparation, and reliably clear launch state. |
+| `PlayCover/Utils/PlayTools.swift` | Stage framework installation before replacement and expose completion to game launch. |
+| `PlayCover/Views/AppSettingsView.swift` | Add the all-games toggle, explain separate storage, coordinate PlayChain and launcher/alias replacement. |
+| `PlayCover/Utils/Extensions/PlayAppExtensions.swift` | Generate indexed forwarding launchers for isolated games. |
+| `PlayCover/Info.plist`, `PlayCover/Utils/URLHandler.swift` | Register the launch URL scheme and route installed-game requests through PlayCover. |
+| `PlayCover/IsolatedRuntime/IsolatedRuntime.swift` | Prepare guests and personalized runtimes, generate launcher/icon resources, manage logs and launch errors. |
+| `PlayCover/IsolatedRuntime/GameLauncher.m` | Forward Finder/Spotlight launches to the host without an extra Dock tile. |
 | `PlayCover/IsolatedRuntime/RuntimeKeychainSlots.swift` | Preserve and allocate distinct native-keychain slots safely. |
-| `PlayCover/IsolatedRuntime/PlayCoverRuntime.h` | Apply the runtime-only viewport and Dock icon fixes. |
+| `PlayCover/IsolatedRuntime/PlayCoverRuntime.h` | Apply runtime-only aspect-preserving scaling, Dock name, and icon fixes. |
 | `Scripts/build-isolated-runtime.sh` | Generate the integration overlay and entitlements, build and embed Catalyst. |
 | `Tests/RuntimeKeychainSlotsTests.swift` | Exercise allocation, persistence, invalid data, exhaustion, and concurrency. |
 | `README.md`, `ISOLATED-RUNTIME.md` | Link and document this fork's adaptation. |
@@ -192,10 +247,20 @@ tester confirmed that it passed user verification and that the corrected Dock ic
 matched the rounded, inset style of a normally launched PlayCover game. Later
 launch checks retained downloaded resources, reached the title/resource-download
 screen without the earlier Gatekeeper warning, and filled the configured fixed
-viewport without blank right/bottom strips.
+viewport without blank right/bottom strips. Follow-up checks reached the title
+screen after repairing an incomplete framework installation and entered full
+screen with the configured guest aspect ratio and uniform scaling. The tester
+confirmed that full-screen exit/re-entry works and that game names/icons are
+correct. A subsequent named launcher was indexed as **Blue Archive**, opened
+PlayCover and the game from a cold start, and reached the title screen. The old
+bundle-ID-named guest copy and its stale registration were removed. The tester
+confirmed the indexed app-list/Spotlight entry and the name/icon in Dock, Force
+Quit, and Game Mode. The final installed build also passed a cold-start launcher
+check and reached downloaded-file verification.
 
 A successful build, SwiftLint, diff checks, deep/strict signatures, and preservation
-of the original installed executable were checked. The slot allocator tests cover
+of the original installed executable were checked. Launch-function complexity
+warnings remain in SwiftLint. The slot allocator tests cover
 stable/distinct assignments, upstream registry reuse, free-list consumption,
 exhaustion, duplicate/colliding slots, corrupt-registry preservation, and 16
 concurrent allocations.

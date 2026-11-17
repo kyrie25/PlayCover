@@ -560,10 +560,9 @@ struct BypassesView: View {
                         if enabled {
                             settings.settings.playChain = false
                             settings.settings.playChainDebugging = false
-                            app.removeAlias()
-                        } else {
-                            app.createAlias()
                         }
+                        app.removeAlias()
+                        app.createAlias()
                     }
                 Spacer().frame(height: 20)
                 HStack(alignment: .center) {

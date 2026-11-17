@@ -21,6 +21,9 @@ anchor = '    overwriteMainCFBundle();'
 if text.count(anchor) != 1:
     raise SystemExit('Upstream runtime entry point changed; review the PlayCover overlay.')
 text = '#import "PlayCoverRuntime.h"\n' + text.replace(anchor, anchor + '\n    PlayCoverRuntimeInit(appBundle);')
+if text.count('@"apps/%@"') != 1:
+    raise SystemExit('Upstream guest storage changed; review Spotlight exclusions.')
+text = text.replace('@"apps/%@"', '@"apps.noindex/%@"')
 path.write_text(text)
 PYOVERLAY
 
@@ -59,3 +62,9 @@ DEST="${TARGET_BUILD_DIR:?}/${UNLOCALIZED_RESOURCES_FOLDER_PATH:?}/Runtime-Catal
 rm -rf "$DEST"
 /usr/bin/ditto "$CACHE/Products/Release-maccatalyst/Runtime-Catalyst.app" "$DEST"
 /usr/bin/codesign --verify --deep --strict "$DEST"
+
+LAUNCHER="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GameLauncher"
+/usr/bin/xcrun clang -arch arm64 -fobjc-arc -framework AppKit \
+    -mmacosx-version-min="${MACOSX_DEPLOYMENT_TARGET:-12.0}" \
+    "$ROOT/PlayCover/IsolatedRuntime/GameLauncher.m" -o "$LAUNCHER"
+/usr/bin/codesign --force --sign - "$LAUNCHER"

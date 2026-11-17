@@ -52,7 +52,10 @@ extension PlayApp {
     }
 
     func createAlias() {
-        guard !settings.settings.useIsolatedRuntime else { return }
+        if settings.settings.useIsolatedRuntime {
+            do { try IsolatedRuntime.createLauncher(for: self) } catch { Log.shared.error(error) }
+            return
+        }
         do {
             try FileManager.default.createDirectory(atPath: aliasURL.path,
                                                     withIntermediateDirectories: true,

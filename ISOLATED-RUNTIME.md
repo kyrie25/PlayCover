@@ -261,7 +261,10 @@ Quit. A follow-up screenshot showed Game Mode still resolving the generic embedd
 runtime. Its LaunchServices application-record lookup was reproduced and corrected
 to resolve the named copy by unregistering the embedded template; the installed
 follow-up retained that result after a fresh game launch. Overlay appearance is
-pending a manual check. The installed build also passed a cold-start launcher
+confirmed for the title. The icon was still a placeholder in the existing overlay;
+an asynchronous IconServices lookup rendered the correct game artwork, and the
+overlay was restarted to refresh it. Visual confirmation of that icon is pending.
+The installed build also passed a cold-start launcher
 check and reached downloaded-file verification.
 
 A successful build, SwiftLint, diff checks, deep/strict signatures, and preservation

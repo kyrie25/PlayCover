@@ -149,6 +149,12 @@ directory before replacing the user framework. Game launch waits for that task
 before plugin preparation. This avoids launching against a partially copied
 framework, and an interrupted copy leaves the previous framework available.
 
+When Discord Activity is enabled for an isolated game, the PlayCover host
+connects to the running Discord client's local socket. The Catalyst sandbox
+cannot connect to that socket directly. The host waits for Discord to acknowledge
+the handshake, then publishes the configured activity with the game's PID. The
+connection closes when the game exits. Start Discord before launching the game.
+
 ## Storage and keychain isolation
 
 | Item | Location |
@@ -243,6 +249,7 @@ build you distribute.
 | `PlayCover/Utils/Extensions/PlayAppExtensions.swift` | Generate indexed forwarding launchers for isolated games. |
 | `PlayCover/Info.plist`, `PlayCover/Utils/URLHandler.swift` | Register the launch URL scheme and route installed-game requests through PlayCover. |
 | `PlayCover/IsolatedRuntime/IsolatedRuntime.swift` | Prepare guests and personalized runtimes, generate launcher/icon resources, manage logs and launch errors. |
+| `PlayCover/IsolatedRuntime/IsolatedDiscordActivity.swift` | Publish the isolated game's Discord activity through the host's existing socket access. |
 | `PlayCover/IsolatedRuntime/GameLauncher.m` | Forward Finder/Spotlight launches to the host without an extra Dock tile. |
 | `PlayCover/IsolatedRuntime/RuntimeKeychainSlots.swift` | Preserve and allocate distinct native-keychain slots safely. |
 | `PlayCover/IsolatedRuntime/PlayCoverRuntime.h` | Apply runtime-only aspect-preserving scaling, Dock name, and icon fixes. |
@@ -251,6 +258,10 @@ build you distribute.
 | `README.md`, `ISOLATED-RUNTIME.md` | Link and document this fork's adaptation. |
 
 ## Verification and limits
+
+With Discord desktop open, the installed PlayCover build launched Blue Archive
+through its named launcher and received Discord's activity acknowledgement.
+Quitting Blue Archive closed the host's Discord connection.
 
 The integrated build was exercised with Blue Archive Global **1.96.474931**. The
 tester confirmed that it passed user verification and that the corrected Dock icon

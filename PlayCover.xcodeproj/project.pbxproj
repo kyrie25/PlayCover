@@ -88,6 +88,7 @@
 		B44B40372C1E315600CE2A3E /* GoogleDrive.swift in Sources */ = {isa = PBXBuildFile; fileRef = B44B40362C1E315600CE2A3E /* GoogleDrive.swift */; };
 		B44E8CD32C31C50200542038 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = B44E8CD22C31C50200542038 /* SwiftSoup */; };
 		B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */; };
+		FA8C94CB456A41ABBCAD72B6 /* IsolatedDiscordActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */; };
 		B6603E1128E206A300DEFA3F /* UninstallSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1028E206A300DEFA3F /* UninstallSettings.swift */; };
 		B6603E1328E2257800DEFA3F /* Uninstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1228E2257800DEFA3F /* Uninstaller.swift */; };
 		B67BC7122C39354C00315011 /* UpdateScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67BC7112C39354500315011 /* UpdateScheme.swift */; };
@@ -213,6 +214,7 @@
 		B6AB53C829232B4F00039B2E /* KeyCodeNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyCodeNames.swift; sourceTree = "<group>"; };
 		B6ABDA292971EEF700A46E80 /* ProgressVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressVM.swift; sourceTree = "<group>"; };
 		E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IsolatedRuntime.swift; path = PlayCover/IsolatedRuntime/IsolatedRuntime.swift; sourceTree = "<group>"; };
+		FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IsolatedDiscordActivity.swift; path = PlayCover/IsolatedRuntime/IsolatedDiscordActivity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -457,6 +459,7 @@
 			isa = PBXGroup;
 			children = (
 				E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */,
+				FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */,
 				4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */,
 				AFE1686277DE0EE1B934F6CF /* RuntimeKeychainSlots.swift */,
 			);
@@ -753,6 +756,7 @@
 				9272F19E273B74C800DFBEF1 /* AppsVM.swift in Sources */,
 				923421F7275F40300030CD7D /* AppContainer.swift in Sources */,
 				B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */,
+				FA8C94CB456A41ABBCAD72B6 /* IsolatedDiscordActivity.swift in Sources */,
 				321E87EEAD788ED1C94ABD4A /* Dylibifier.m in Sources */,
 				4A3C2001B1C2722A5F63B42E /* RuntimeKeychainSlots.swift in Sources */,
 			);
@@ -888,7 +892,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "./PlayCover/PlayCover-Bridging-Header.h";
 				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "./PlayCover/PlayCover-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				SYSTEM_FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = "$(SDKROOT)/System/Library/PrivateFrameworks";
 			};
 			name = Release;
 		};
@@ -991,7 +995,7 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "./PlayCover/PlayCover-Bridging-Header.h";
 				"SWIFT_OBJC_BRIDGING_HEADER[arch=*]" = "./PlayCover/PlayCover-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-				SYSTEM_FRAMEWORK_SEARCH_PATHS = "$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks";
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = "$(SDKROOT)/System/Library/PrivateFrameworks";
 			};
 			name = Nightly;
 		};

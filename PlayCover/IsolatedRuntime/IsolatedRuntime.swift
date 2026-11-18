@@ -32,6 +32,7 @@ enum IsolatedRuntime {
         }
 
         let display = app.settings.settings
+        let discordSettings = display.discordActivity
         let displayName = app.name
         let icon = Cacher.shared.resolveLocalIcon(
             at: app.url, bundleIdentifier: bundleIdentifier,
@@ -121,7 +122,9 @@ enum IsolatedRuntime {
             }
             process.standardOutput = output
             process.standardError = output
+            let discord = IsolatedDiscordActivity.connection(enabled: discordSettings.enable)
             process.terminationHandler = { task in
+                discord?.cancel()
                 if task.terminationStatus != 0 {
                     Log.shared.error("The isolated runtime exited with status \(task.terminationStatus). " +
                                      "See \(logURL.path) and Console's Runtime-Catalyst messages.")
@@ -129,6 +132,12 @@ enum IsolatedRuntime {
             }
             flock(lock, LOCK_UN)
             try process.run()
+            if let discord {
+                Task {
+                    await IsolatedDiscordActivity.publish(on: discord, process: process, settings: discordSettings,
+                                                           name: displayName, bundleID: bundleIdentifier)
+                }
+            }
             Log.shared.log("Launched \(bundleIdentifier) with isolated runtime + PlayTools " +
                            "(PID \(process.processIdentifier)).")
         }.value

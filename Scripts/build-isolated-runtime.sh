@@ -68,3 +68,9 @@ LAUNCHER="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GameLauncher"
     -mmacosx-version-min="${MACOSX_DEPLOYMENT_TARGET:-12.0}" \
     "$ROOT/PlayCover/IsolatedRuntime/GameLauncher.m" -o "$LAUNCHER"
 /usr/bin/codesign --force --sign - "$LAUNCHER"
+
+# Package the small Xcode target with the exact entitlements used for this runtime.
+PROVISIONING="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/RuntimeProvisioning"
+mkdir -p "$PROVISIONING/Provision.xcodeproj"
+/bin/cp "$ROOT/Scripts/RuntimeProvisioning/Provision.xcodeproj/project.pbxproj" "$PROVISIONING/Provision.xcodeproj/"
+/bin/cp "$ROOT/Scripts/RuntimeProvisioning/"{renew.sh,main.c} "$CACHE/Runtime.entitlements" "$PROVISIONING/"

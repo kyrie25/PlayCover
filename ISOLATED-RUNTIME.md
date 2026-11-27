@@ -60,7 +60,7 @@ For an isolated launch, `IsolatedRuntime.launch()`:
    copy the game's directory name, `CFBundleName`, `CFBundleDisplayName`, and an
    ICNS resource derived from the rounded icon. The bundle identifier in its
    `Info.plist` is lowercased for Games' case-sensitive artwork lookup. The original
-   signed identifier, profile, entitlements, and requirements are preserved to
+   signed identifier, entitlements, and requirements are preserved to
    retain the runtime's sandbox and native-keychain identity. The copy is signed
    with the embedded runtime's certificate and verified before launch.
    It unregisters the generic embedded template and registers the named copy
@@ -207,6 +207,22 @@ The existing framework/Sparkle signing phase now uses
 to `codesign`. No personal identity, team identifier, certificate, provisioning
 profile, or development account is committed by this adaptation.
 
+### Automatic profile renewal
+
+On each isolated launch, PlayCover checks the embedded Catalyst profile before
+preparing the game. A valid profile works offline. Once it expires, PlayCover
+checks the shared profile cache and, if necessary, runs a small bundled Xcode
+project with automatic provisioning for the runtime's original team and bundle
+identifier. Xcode needs a configured development account and may need internet
+access. A failed renewal reports the Xcode error and can be retried by launching
+again.
+
+PlayCover checks the replacement profile's expiry, team, application identifier,
+platform, and signing certificate, then caches it atomically in
+`IsolatedRuntime/Provisioning.noindex`. Concurrent launches share a renewal
+lock. Each personalized runtime receives the selected profile before signing.
+The installed PlayCover bundle stays sealed throughout renewal.
+
 ### Building from source
 
 Requires Apple Silicon, Xcode with Mac Catalyst support, Carthage, SwiftLint, and
@@ -303,6 +319,13 @@ mkdir -p build.noindex/tests
 swiftc PlayCover/IsolatedRuntime/RuntimeKeychainSlots.swift \
   Tests/RuntimeKeychainSlotsTests.swift -o build.noindex/tests/runtime-slots
 build.noindex/tests/runtime-slots
+# Integration test: supply a current signed template, an expired profile for
+# that same runtime, and the packaged RuntimeProvisioning/renew.sh.
+swiftc PlayCover/IsolatedRuntime/RuntimeProvisioning.swift \
+  Tests/RuntimeProvisioningTests.swift PlayCover/Utils/Shell.swift \
+  PlayCover/Utils/Extensions/URLExtensions.swift PlayCover/ViewModel/Log.swift \
+  -o build.noindex/tests/runtime-provisioning
+build.noindex/tests/runtime-provisioning "$runtime" "$expired_profile" "$helper"
 swiftlint lint PlayCover/IsolatedRuntime Tests/RuntimeKeychainSlotsTests.swift --quiet
 bash -n Scripts/build-isolated-runtime.sh
 git diff --check

@@ -61,6 +61,9 @@ enum IsolatedRuntime {
             guard flock(lock, LOCK_EX | LOCK_NB) == 0 else {
                 throw "This game is already running. Quit it before launching again."
             }
+            let profile = try RuntimeProvisioning.profile(for: runtime.bundleURL,
+                cacheDirectory: logs.appendingPathComponent("Provisioning.noindex"),
+                helper: resources.appendingPathComponent("RuntimeProvisioning/renew.sh"))
             try fileManager.createDirectory(at: apps, withIntermediateDirectories: true)
             let staging = apps.appendingPathComponent(UUID().uuidString + ".noindex")
             defer { try? fileManager.removeItem(at: staging) }
@@ -106,7 +109,7 @@ enum IsolatedRuntime {
             fileManager.createFile(atPath: logURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
             let output = try FileHandle(forWritingTo: logURL)
             defer { try? output.close() }
-            let namedRuntime = try personalizedRuntime(runtime, name: displayName, icon: icon,
+            let namedRuntime = try personalizedRuntime(runtime, profile: profile, name: displayName, icon: icon,
                 folder: logs.appendingPathComponent(bundleIdentifier + ".noindex"))
             // Game Mode resolves the runtime ID through LaunchServices, which
             // otherwise prefers the generic template nested in /Applications.
@@ -182,7 +185,8 @@ enum IsolatedRuntime {
         LSRegisterURL(app.aliasURL as CFURL, true)
     }
 
-    private static func personalizedRuntime(_ runtime: Bundle, name: String, icon: Data?, folder: URL) throws -> URL {
+    private static func personalizedRuntime(_ runtime: Bundle, profile: Data, name: String, icon: Data?,
+                                            folder: URL) throws -> URL {
         let fileManager = FileManager.default
         let staging = folder.deletingLastPathComponent().appendingPathComponent(UUID().uuidString + ".noindex")
         defer { try? fileManager.removeItem(at: staging) }
@@ -190,6 +194,7 @@ enum IsolatedRuntime {
         let runtimeName = name.replacingOccurrences(of: "/", with: ":")
         let copy = staging.appendingPathComponent(runtimeName).appendingPathExtension("app")
         try fileManager.copyItem(at: runtime.bundleURL, to: copy)
+        try profile.write(to: copy.appendingPathComponent("Contents/embedded.provisionprofile"), options: .atomic)
         let infoURL = copy.appendingPathComponent("Contents/Info.plist")
         var info = try PropertyListSerialization.propertyList(
             from: Data(contentsOf: infoURL), format: nil) as? [String: Any] ?? [:]

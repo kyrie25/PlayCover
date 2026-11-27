@@ -1,0 +1,49 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	objectVersion = 56;
+	objects = {
+		100000000000000000000001 = {
+			isa = PBXProject;
+			buildConfigurationList = 100000000000000000000002;
+			compatibilityVersion = "Xcode 14.0";
+			mainGroup = 100000000000000000000003;
+			targets = (100000000000000000000004);
+		};
+		100000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (100000000000000000000005); defaultConfigurationName = Release;};
+		100000000000000000000003 = {isa = PBXGroup; children = (100000000000000000000006, 100000000000000000000007); sourceTree = "<group>";};
+		100000000000000000000004 = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000008;
+			buildPhases = (100000000000000000000009);
+			name = Provision;
+			productName = Provision;
+			productReference = 100000000000000000000007;
+			productType = "com.apple.product-type.application";
+		};
+		100000000000000000000005 = {isa = XCBuildConfiguration; buildSettings = {}; name = Release;};
+		100000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>";};
+		100000000000000000000007 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Provision.app; sourceTree = BUILT_PRODUCTS_DIR;};
+		100000000000000000000008 = {isa = XCConfigurationList; buildConfigurations = (10000000000000000000000A); defaultConfigurationName = Release;};
+		100000000000000000000009 = {isa = PBXSourcesBuildPhase; files = (10000000000000000000000B);};
+		10000000000000000000000A = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Runtime.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_NAME = Provision;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		10000000000000000000000B = {isa = PBXBuildFile; fileRef = 100000000000000000000006;};
+	};
+	rootObject = 100000000000000000000001;
+}

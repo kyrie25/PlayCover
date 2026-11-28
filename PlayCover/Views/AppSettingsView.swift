@@ -544,6 +544,7 @@ struct BypassesView: View {
     @State private var hasIosFrameworks: Bool
 
     @ObservedObject var viewModel: AppSettingsVM
+    @State private var showRuntimeGuide = false
     private var app: PlayApp { viewModel.app }
 
     init(settings: Binding<AppSettings>,
@@ -616,6 +617,17 @@ struct BypassesView: View {
                     ))
                     .help("Moves this game's data when switching runtimes. Quit the game before switching.")
                     .disabled(viewModel.runtimeMove != nil)
+                    Button {
+                        showRuntimeGuide.toggle()
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("How to set up local Xcode signing for the isolated runtime")
+                    .popover(isPresented: $showRuntimeGuide, arrowEdge: .bottom) {
+                        IsolatedRuntimeSigningGuideView()
+                    }
                     Spacer()
                     runtimeStatus
                 }
@@ -678,6 +690,91 @@ struct BypassesView: View {
                 _ = await app.changeDyldLibraryPath(set: hasIosFrameworks, path: PlayApp.iosFrameworks)
                 task = .none
             }
+        }
+    }
+}
+
+private struct IsolatedRuntimeSigningGuideView: View {
+    @State private var detectedTeam: String?
+    @State private var checked = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Isolated Runtime Signing Setup")
+                .font(.headline)
+            statusRow
+            Text("macOS requires an Apple-signed provisioning profile for the isolated Catalyst runtime's " +
+                 "native keychain entitlements. Standard PlayCover mode does not need this.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                step("1.", "Install Xcode from the Mac App Store and open it once to finish setup.")
+                step("2.", "Open Xcode → Settings → Accounts (⌘,), click +, and sign in with an Apple Account " +
+                     "(a free Personal Team works).")
+                step("3.", "Select your team, click Manage Certificates…, click +, and add Apple Development.")
+                step("4.", "Return to PlayCover and enable Use isolated runtime. PlayCover builds and signs the " +
+                     "runtime automatically and renews its 7-day profile on future launches.")
+            }
+            HStack {
+                Button("Open Xcode") { openXcode() }
+                Button("Recheck") { refreshStatus() }
+                Spacer()
+            }
+            .padding(.top, 2)
+        }
+        .padding(14)
+        .frame(width: 360)
+        .onAppear { refreshStatus() }
+    }
+
+    @ViewBuilder
+    private var statusRow: some View {
+        if !checked {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text("Checking local Apple Development certificate…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else if let team = detectedTeam {
+            Label("Apple Development team ready (\(team))", systemImage: "checkmark.circle.fill")
+                .font(.caption)
+                .foregroundStyle(.green)
+        } else {
+            Label("No valid Apple Development certificate found", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private func step(_ number: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(number)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(text)
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func refreshStatus() {
+        checked = false
+        Task.detached(priority: .userInitiated) {
+            let team = try? RuntimeProvisioning.detectDevelopmentTeam()
+            await MainActor.run {
+                detectedTeam = team
+                checked = true
+            }
+        }
+    }
+
+    private func openXcode() {
+        if let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
+            NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        } else if let store = URL(string: "macappstore://apps.apple.com/app/id497799835") {
+            NSWorkspace.shared.open(store)
         }
     }
 }

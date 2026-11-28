@@ -44,7 +44,9 @@ enum RuntimeUninstall {
         let lockFile = guest.appendingPathComponent(".guest.lock")
         let kind = try type(of: lockFile)
         guard kind != nil || createIfMissing else { return nil }
-        guard kind == nil || kind == S_IFREG else { throw failure("Unexpected isolated guest lock at \(lockFile.path).") }
+        guard kind == nil || kind == S_IFREG else {
+            throw failure("Unexpected isolated guest lock at \(lockFile.path).")
+        }
         let access = createIfMissing ? O_RDWR | O_CREAT : O_RDONLY
         let lock = open(lockFile.path, access | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0o600)
         guard lock >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }

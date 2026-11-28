@@ -30,39 +30,46 @@ enum RuntimeDataMigration {
         var plan = ancestors.map { Step.directory($0) }
         try inspect(source: source, destination: destination, relativePath: "", plan: &plan)
         let total = plan.reduce(0) { count, step in count + (step.isFile ? 1 : 0) }
-        let started = ProcessInfo.processInfo.systemUptime
-        var lastUpdate = started
-        var moved = 0
         var applied = 0
-        if total > 0 { progress(.moving(files: 0, total: total, filesPerSecond: 0)) }
         do {
-            for step in plan {
-                try step.apply()
-                applied += 1
-                guard step.isFile else { continue }
-                moved += 1
-                let now = ProcessInfo.processInfo.systemUptime
-                if now - lastUpdate >= 0.1 || moved == total {
-                    let rate = Int(Double(moved) / max(now - started, 0.001))
-                    progress(.moving(files: moved, total: total, filesPerSecond: rate))
-                    lastUpdate = now
-                }
-            }
+            try apply(plan, total: total, applied: &applied, progress: progress)
             progress(.finishing)
             try await commit()
         } catch {
-            if applied > 0 { progress(.restoring) }
-            let original = error
-            var rollbackError: Error?
-            for step in plan.prefix(applied).reversed() {
-                do { try step.undo() } catch { rollbackError = rollbackError ?? error }
-            }
-            if let rollbackError {
-                throw failure("Game data migration failed: \(original.localizedDescription). " +
-                              "Could not fully restore the files: \(rollbackError.localizedDescription)")
-            }
-            throw original
+            throw rollback(plan, applied: applied, original: error, progress: progress)
         }
+    }
+
+    private static func apply(_ plan: [Step], total: Int, applied: inout Int, progress: (Progress) -> Void) throws {
+        let started = ProcessInfo.processInfo.systemUptime
+        var lastUpdate = started
+        var moved = 0
+        if total > 0 { progress(.moving(files: 0, total: total, filesPerSecond: 0)) }
+        for step in plan {
+            try step.apply()
+            applied += 1
+            guard step.isFile else { continue }
+            moved += 1
+            let now = ProcessInfo.processInfo.systemUptime
+            if now - lastUpdate >= 0.1 || moved == total {
+                let rate = Int(Double(moved) / max(now - started, 0.001))
+                progress(.moving(files: moved, total: total, filesPerSecond: rate))
+                lastUpdate = now
+            }
+        }
+    }
+
+    private static func rollback(_ plan: [Step], applied: Int, original: Error, progress: (Progress) -> Void) -> Error {
+        if applied > 0 { progress(.restoring) }
+        var rollbackError: Error?
+        for step in plan.prefix(applied).reversed() {
+            do { try step.undo() } catch { rollbackError = rollbackError ?? error }
+        }
+        if let rollbackError {
+            return failure("Game data migration failed: \(original.localizedDescription). " +
+                           "Could not fully restore the files: \(rollbackError.localizedDescription)")
+        }
+        return original
     }
 
     private enum Step {
@@ -118,7 +125,8 @@ enum RuntimeDataMigration {
             } else if kind == S_IFREG && existing == nil {
                 plan.append(.file(entry, target))
             } else {
-                throw failure("Game data already exists at \(target.path). Resolve the conflict before switching modes.")
+                throw failure("Game data already exists at \(target.path). " +
+                              "Resolve the conflict before switching modes.")
             }
         }
     }

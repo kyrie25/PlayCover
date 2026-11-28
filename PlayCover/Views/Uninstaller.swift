@@ -220,22 +220,7 @@ class Uninstaller {
             let cacheExists = files.fileExists(atPath: PlayApp.bundleIDCacheURL.path)
             let cached = cacheExists ? try PlayApp.bundleIDCache : []
             let danglingItems = Set(cached.filter { !installed.contains($0.lowercased()) })
-            var isolatedCandidates = danglingItems
-            let runtime = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
-            if files.fileExists(atPath: runtime.path) {
-                let suffix = "-runtime.log"
-                for entry in try files.contentsOfDirectory(at: runtime, includingPropertiesForKeys: [.isRegularFileKey])
-                    where entry.lastPathComponent.hasSuffix(suffix) {
-                    let id = String(entry.lastPathComponent.dropLast(suffix.count))
-                    if try entry.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true,
-                       !installed.contains(id.lowercased()) {
-                        isolatedCandidates.insert(id)
-                    }
-                }
-            }
-            for id in isolatedCandidates {
-                try IsolatedRuntime.removeInstallation(for: id, clearData: true)
-            }
+            try pruneIsolatedInstallations(dangling: danglingItems, installed: installed)
 
             var fullPruneURLs = pruneURLs
             fullPruneURLs.append(contentsOf: cacheURLs)
@@ -258,6 +243,27 @@ class Uninstaller {
             }
         } catch {
             Log.shared.error(error)
+        }
+    }
+
+    @MainActor
+    private static func pruneIsolatedInstallations(dangling: Set<String>, installed: Set<String>) throws {
+        let files = FileManager.default
+        var candidates = dangling
+        let runtime = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
+        if files.fileExists(atPath: runtime.path) {
+            let suffix = "-runtime.log"
+            for entry in try files.contentsOfDirectory(at: runtime, includingPropertiesForKeys: [.isRegularFileKey])
+                where entry.lastPathComponent.hasSuffix(suffix) {
+                let id = String(entry.lastPathComponent.dropLast(suffix.count))
+                if try entry.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true,
+                   !installed.contains(id.lowercased()) {
+                    candidates.insert(id)
+                }
+            }
+        }
+        for id in candidates {
+            try IsolatedRuntime.removeInstallation(for: id, clearData: true)
         }
     }
 }

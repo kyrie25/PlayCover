@@ -4,6 +4,7 @@
 #import <fcntl.h>
 #import <pwd.h>
 #import <stdio.h>
+#import <stdlib.h>
 #import <sys/stat.h>
 #import <unistd.h>
 
@@ -64,14 +65,14 @@ static NSDictionary *PCReadBundlePlist(int bundle, const char *name) {
     return [plist isKindOfClass:[NSDictionary class]] ? plist : nil;
 }
 
-static BOOL PCCheckGuestBundle(int parent, const char *name, NSString *identifier, BOOL requireExecutable) {
+static BOOL PCCheckGuestBundle(int parent, const char *name, NSString *identifier) {
     int bundle = openat(parent, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (bundle < 0) {
         return NO;
     }
     NSDictionary *info = PCReadBundlePlist(bundle, "Info.plist");
     BOOL valid = [identifier isEqual:info[@"CFBundleIdentifier"]];
-    if (valid && requireExecutable) {
+    if (valid) {
         NSString *executable = info[@"CFBundleExecutable"];
         NSCharacterSet *nul = [NSCharacterSet characterSetWithRange:NSMakeRange(0, 1)];
         struct stat file;
@@ -84,79 +85,72 @@ static BOOL PCCheckGuestBundle(int parent, const char *name, NSString *identifie
     return valid;
 }
 
-static void PCRemoveLegacyGuest(NSString *home, NSString *name, NSString *identifier) {
-    NSString *legacyApps = [home stringByAppendingPathComponent:@"apps"];
-    int apps = PCOpenRealDirectory(legacyApps);
-    if (apps < 0) {
-        return;
-    }
-    int bundle = openat(apps, name.fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-    if (bundle >= 0) {
+static void PCRemovePreviousGuestCopies(NSString *home, NSString *name, NSString *identifier) {
+    for (NSString *directory in @[@"apps.noindex", @"apps"]) {
+        NSString *previousApps = [home stringByAppendingPathComponent:directory];
+        int apps = PCOpenRealDirectory(previousApps);
+        if (apps < 0) {
+            continue;
+        }
+        int bundle = openat(apps, name.fileSystemRepresentation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        close(apps);
+        if (bundle < 0) {
+            continue;
+        }
         NSDictionary *features = PCReadBundlePlist(bundle, "RunnerFeatures.plist");
         NSDictionary *info = PCReadBundlePlist(bundle, "Info.plist");
         close(bundle);
         if (features[@"playCoverWidth"] && [identifier isEqual:info[@"CFBundleIdentifier"]]) {
             NSError *error = nil;
-            if (![NSFileManager.defaultManager removeItemAtPath:[legacyApps stringByAppendingPathComponent:name]
+            if (![NSFileManager.defaultManager removeItemAtPath:[previousApps stringByAppendingPathComponent:name]
                                                          error:&error]) {
                 NSLog(@"[runtime] Could not clean up the previous prepared bundle: %@", error);
             }
         }
     }
-    close(apps);
 }
 
-// The signed helper owns the destination container. The host supplies only the unique incoming token.
-static BOOL PCInstallIncomingGuest(NSString *token, NSString *identifier, NSString *name, NSString *home) {
+static NSString *PCIncomingRequestDirectory;
+
+static void PCCleanUpIncomingRequest(void) {
+    @autoreleasepool {
+        int request = PCOpenRealDirectory(PCIncomingRequestDirectory);
+        if (request >= 0) {
+            close(request);
+            [NSFileManager.defaultManager removeItemAtPath:PCIncomingRequestDirectory error:NULL];
+        }
+    }
+}
+
+// Read the prepared bundle in place to preserve the host's signing and quarantine metadata.
+static NSString *PCIncomingGuestPath(NSString *token, NSString *identifier, NSString *name) {
     struct passwd *user = getpwuid(getuid());
     if (!user || !user->pw_dir) {
         NSLog(@"[runtime] Could not identify the user's home for the prepared bundle");
-        return NO;
+        return nil;
     }
     NSString *userHome = [NSString stringWithUTF8String:user->pw_dir];
+    if (!userHome.isAbsolutePath) {
+        NSLog(@"[runtime] Could not identify the user's home for the prepared bundle");
+        return nil;
+    }
     NSString *root = [userHome stringByAppendingPathComponent:
         @"Library/Containers/io.playcover.PlayCover/IsolatedRuntime/Incoming.noindex"];
     NSString *staging = [root stringByAppendingPathComponent:[token stringByAppendingString:@".noindex"]];
     int source = PCOpenRealDirectory(staging);
-    const char *bundleName = name.fileSystemRepresentation;
-    if (source < 0 || !PCCheckGuestBundle(source, bundleName, identifier, YES)) {
-        if (source >= 0) {
-            close(source);
-        }
-        NSLog(@"[runtime] Incoming bundle is missing or does not match %@", identifier);
-        return NO;
+    if (source < 0) {
+        NSLog(@"[runtime] Could not open incoming request for %@: %s", identifier, strerror(errno));
+        return nil;
     }
-
-    NSString *appsPath = [home stringByAppendingPathComponent:@"apps.noindex"];
-    if (mkdir(appsPath.fileSystemRepresentation, 0700) != 0 && errno != EEXIST) {
-        NSLog(@"[runtime] Could not create the prepared-app directory: %s", strerror(errno));
-        close(source);
-        return NO;
-    }
-    int target = PCOpenRealDirectory(appsPath);
-    if (target < 0) {
-        NSLog(@"[runtime] Could not open the prepared-app directory: %s", strerror(errno));
-        close(source);
-        return NO;
-    }
-
-    int moved = renameatx_np(source, bundleName, target, bundleName, RENAME_EXCL);
-    if (moved != 0 && errno == EEXIST && PCCheckGuestBundle(target, bundleName, identifier, NO)) {
-        // The previous copy lands in the unique staging folder after the swap.
-        moved = renameatx_np(source, bundleName, target, bundleName, RENAME_SWAP);
-    }
-    int moveError = errno;
-    close(target);
+    BOOL valid = PCCheckGuestBundle(source, name.fileSystemRepresentation, identifier);
     close(source);
-    if (moved != 0) {
-        NSLog(@"[runtime] Could not install the prepared bundle for %@: %s", identifier, strerror(moveError));
-        return NO;
+    if (!valid) {
+        NSLog(@"[runtime] Incoming bundle is missing or does not match %@", identifier);
+        return nil;
     }
-    NSError *cleanupError = nil;
-    if (![NSFileManager.defaultManager removeItemAtPath:staging error:&cleanupError] &&
-        !([cleanupError.domain isEqualToString:NSCocoaErrorDomain] && cleanupError.code == NSFileNoSuchFileError)) {
-        NSLog(@"[runtime] Could not clean up the incoming request: %@", cleanupError);
-    }
-    PCRemoveLegacyGuest(home, name, identifier);
-    return YES;
+
+    // PlayCover may quit while the guest is still using this bundle.
+    PCIncomingRequestDirectory = staging;
+    atexit(PCCleanUpIncomingRequest);
+    return [staging stringByAppendingPathComponent:name];
 }

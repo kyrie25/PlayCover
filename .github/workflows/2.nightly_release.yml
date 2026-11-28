@@ -66,7 +66,15 @@ jobs:
         env:
           PLAYCOVER_CODESIGN_P12: ${{ secrets.PLAYCOVER_CODESIGN_P12 }}
           PLAYCOVER_CODESIGN_PASSWORD: ${{ secrets.PLAYCOVER_CODESIGN_PASSWORD }}
-        run: bash Scripts/sign-macos.sh build.noindex/DerivedData/Build/Products/Nightly/PlayCover.app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP=build.noindex/DerivedData/Build/Products/Nightly/PlayCover.app
+          INFO="$APP/Contents/Info.plist"
+          if ! /usr/bin/plutil -replace PlayCoverManualUpdatesOnly -bool true "$INFO"; then
+            /usr/bin/plutil -insert PlayCoverManualUpdatesOnly -bool true "$INFO"
+          fi
+          bash Scripts/sign-macos.sh "$APP"
 
       - name: Package and verify DMG
         shell: bash
@@ -85,6 +93,8 @@ jobs:
           /usr/bin/codesign --verify --deep --strict \
             -R "=identifier \"io.playcover.PlayCover\" and certificate leaf = H\"$FINGERPRINT\"" \
             "$MOUNT/PlayCover.app"
+          test "$(/usr/bin/plutil -extract PlayCoverManualUpdatesOnly raw -expect bool \
+            "$MOUNT/PlayCover.app/Contents/Info.plist")" = true
           test -f "$MOUNT/PlayCover.app/Contents/Resources/IsolatedRuntimeSource/build-local.sh"
           test -x "$MOUNT/PlayCover.app/Contents/Resources/GameLauncher"
 

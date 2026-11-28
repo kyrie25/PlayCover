@@ -203,6 +203,8 @@
 "settings.tab.bypasses" = "Bypasses";
 "settings.toggle.jbBypass" = "Enable Jailbreak Bypass (Experimental)";
 "settings.toggle.jbBypass.help" = "Attempts to bypass Jailbreak Detection in some games (Not guaranteed to work all the time)";
+"settings.toggle.cryptidPatch" = "Spoof App Encryption Flag";
+"settings.toggle.cryptidPatch.help" = "Makes decrypted apps appear encrypted in memory at launch. Known to help bypass certain jailbreak and anti-cheat checks in some games (Not guaranteed to work all the time)";
 "settings.playChain.enable" = "Enable PlayChain (Experimental)";
 "settings.playChain.help" = "Enable PlayChain support for this application, allowing it to (partially) use Apple Keychain Services";
 "settings.playChain.debugging" = "PlayChain debugging";

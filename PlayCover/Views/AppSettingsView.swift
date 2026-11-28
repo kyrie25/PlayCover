@@ -570,6 +570,12 @@ struct BypassesView: View {
                 }
                 Spacer()
                 HStack {
+                    Toggle("settings.toggle.cryptidPatch", isOn: $settings.settings.cryptidPatch)
+                        .help("settings.toggle.cryptidPatch.help")
+                    Spacer()
+                }
+                Spacer()
+                HStack {
                     Toggle("settings.toggle.introspection", isOn: $hasIntrospection)
                         .help("settings.toggle.introspection.help")
                         .toggleStyle(.async($task, role: .introspection))
@@ -592,12 +598,6 @@ struct BypassesView: View {
                 HStack {
                     Toggle("settings.toggle.blockSleepSpamming", isOn: $settings.settings.blockSleepSpamming)
                         .help("settings.toggle.blockSleepSpamming.help")
-                    Spacer()
-                }
-                Spacer()
-                HStack {
-                    Toggle("Spoof encryption flag (cryptid)", isOn: $settings.settings.cryptidPatch)
-                        .help("Patches LC_ENCRYPTION_INFO_64 cryptid to 1 in memory at launch.")
                     Spacer()
                 }
             }

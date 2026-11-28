@@ -55,12 +55,13 @@ For an isolated launch, `IsolatedRuntime.launch()`:
 5. Converts the copied executable into a loadable library with the vendored
    `Catalyst/Host/Dylibifier.m`, restores executable permissions, and adds the integration's
    feature settings and game icon.
-6. Seals the prepared bundle with a local ad-hoc signature after modifying it, then
+6. Signs the prepared executable locally after modifying it, then
    removes `com.apple.quarantine` only from this generated copy, matching existing
    PlayCover IPA-installation behavior. Global macOS security settings are unchanged.
 7. Passes the request UUID to the signed runtime. The runtime takes the per-game
-   lock in its own container and imports the prepared bundle into `apps.noindex`
-   before launching the game. PlayCover removes the request directory on exit.
+   lock in its own container and loads the prepared bundle from the request
+   directory. The generated bundle stays in PlayCover's container so the Catalyst
+   sandbox does not quarantine it during a move. The request is removed on exit.
 8. Copies the embedded runtime into a per-game `.noindex` directory, giving the
    copy the game's directory name, `CFBundleName`, `CFBundleDisplayName`, and an
    ICNS resource derived from the rounded icon. The bundle identifier in its
@@ -194,9 +195,8 @@ verifies the signed runtime, packages the provisioning renewal helper, and
 builds the native `GameLauncher` forwarding executable.
 
 The Catalyst sources apply PlayCover's window and Dock integration after guest
-bundle setup and look for prepared bundles in `apps.noindex`. The embedded
-helper keeps the existing signing identifier and entitlements, preserving its
-sandbox and keychain identity.
+bundle setup. The embedded helper keeps the existing signing identifier and
+entitlements, preserving its sandbox and keychain identity.
 
 The existing framework/Sparkle signing phase now uses
 `EXPANDED_CODE_SIGN_IDENTITY` so it passes the selected signing identity directly

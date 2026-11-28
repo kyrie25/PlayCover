@@ -151,7 +151,7 @@ int main(int argc, char * argv[]) {
         return 1;
     }
 
-    // Keep the guest locked while replacing the prepared bundle and while running it.
+    // Keep the guest locked while loading it and for the rest of its lifetime.
     NSString *guestHomeDir = [homeDir stringByAppendingPathComponent:identifier];
     if (mkdir(guestHomeDir.fileSystemRepresentation, 0700) != 0 && errno != EEXIST) {
         NSLog(@"[runtime] Could not create guest home %@: %s", guestHomeDir, strerror(errno));
@@ -162,10 +162,15 @@ int main(int argc, char * argv[]) {
         return guestLockStatus;
     }
     if (incomingToken) {
-        if (!PCInstallIncomingGuest(incomingToken, identifier, appBundleName, homeDir)) {
+        appBundlePath = PCIncomingGuestPath(incomingToken, identifier, appBundleName);
+        if (!appBundlePath) {
             return 1;
         }
         appBundle = [NSBundle bundleWithPath:appBundlePath];
+        // Resolve the staged URL's bookmark before PlayTools initializes AppKit
+        // under dyld's initializer lock. LaunchServices may need FileProvider.
+        [appBundle.bundleURL bookmarkDataWithOptions:0 includingResourceValuesForKeys:nil
+                                        relativeToURL:nil error:NULL];
     }
     if (!appBundle.executablePath.length) {
         NSLog(@"[runtime] Requested app bundle is missing its executable at %@", appBundlePath);
@@ -242,6 +247,9 @@ int main(int argc, char * argv[]) {
                 int (*appMain)(int, char **) = (int (*)(int, char **))getAppEntryPoint(handle);
                 NSLog(@"Successfully dlopened app's executable");
                 GuestCryptidPatchInit();
+                if (incomingToken) {
+                    PCRemovePreviousGuestCopies(homeDir, appBundleName, identifier);
+                }
                 char *guestArgv[] = { (char *)[executablePath UTF8String], NULL };
                 int retcode = appMain(1, guestArgv);
                 NSLog(@"App exited with code %d", retcode);

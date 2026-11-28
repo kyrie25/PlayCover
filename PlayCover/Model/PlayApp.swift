@@ -85,6 +85,8 @@ class PlayApp: BaseApp {
                 try PlayTools.installPluginInIPA(url)
             }
 
+            try CryptidPatch.sync(for: self)
+
             if try !Entitlements.areEntitlementsValid(app: self) {
                 sign()
             }

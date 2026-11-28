@@ -594,6 +594,12 @@ struct BypassesView: View {
                         .help("settings.toggle.blockSleepSpamming.help")
                     Spacer()
                 }
+                Spacer()
+                HStack {
+                    Toggle("Spoof encryption flag (cryptid)", isOn: $settings.settings.cryptidPatch)
+                        .help("Patches LC_ENCRYPTION_INFO_64 cryptid to 1 in memory at launch.")
+                    Spacer()
+                }
             }
             .padding()
         }

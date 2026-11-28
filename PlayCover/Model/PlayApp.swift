@@ -104,33 +104,21 @@ class PlayApp: BaseApp {
     }
 
     private func launchStandard() async throws {
-        if try !Entitlements.areEntitlementsValid(app: self) {
-            sign()
-        }
-
-        if try !isInfoPlistSigned() {
-            try Shell.signApp(executable)
-        }
-
-        // Wait for keychain unlock to finish before continuing
+        if try !Entitlements.areEntitlementsValid(app: self) { sign() }
+        if try !isInfoPlistSigned() { try Shell.signApp(executable) }
         await unlockKeyCover()
-
         if try !PlayTools.isInstalled() {
             Log.shared.error("PlayTools are not installed! Please move PlayCover.app into Applications!")
         } else if try !Macho.isMachoValidArch(executable) {
             Log.shared.error("The app threw an error during conversion.")
         } else {
-            // Clear any debug-related env vars that could affect the launched app
             self.clearDebugAffectingEnvironment()
-
             if settings.openWithLLDB {
                 try Shell.lldb(executable, withTerminalWindow: settings.openLLDBWithTerminal)
             } else {
-                // The bundle may have been modified and re-signed above, so rebuild the
-                // alias to keep its Info.plist copy in sync with the sealed bundle
+                // Rebuild the alias to keep its Info.plist copy in sync with the sealed bundle.
                 removeAlias()
                 createAlias()
-
                 runAppExec() // Splitting to reduce complexity
             }
         }
@@ -332,6 +320,12 @@ extension PlayApp {
     }
 
     func openAppCache() {
+        if settings.settings.useIsolatedRuntime,
+           let isolated = IsolatedRuntime.dataDirectory(for: info.bundleIdentifier),
+           FileManager.default.fileExists(atPath: isolated.path) {
+            isolated.showInFinderAndSelectLastComponent()
+            return
+        }
         container.containerUrl.showInFinderAndSelectLastComponent()
     }
 

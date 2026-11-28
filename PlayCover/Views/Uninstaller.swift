@@ -187,23 +187,46 @@ class Uninstaller {
 
     @MainActor
     static func clearCache(of app: PlayApp) async {
+        guard !app.isStarting, app.isolatedProcess?.isRunning != true else {
+            Log.shared.error("Quit the game before clearing its data.")
+            return
+        }
         guard !IsolatedRuntime.isSwitchingRuntime(for: app.info.bundleIdentifier) else {
             Log.shared.error("Wait for this game's data to finish moving.")
+            return
+        }
+        do {
+            try IsolatedRuntime.clearData(for: app.info.bundleIdentifier)
+        } catch {
+            Log.shared.error(error)
             return
         }
         await app.clearAllCache()
     }
 
     static func clearExternalCache(_ bundleId: String) {
-        do {
-            for cache in cacheURLs {
-                cache.enumerateContents(options: [.skipsSubdirectoryDescendants]) { file, _ in
-                    if file.path.contains(bundleId) {
-                        try FileManager.default.trashItem(at: file, resultingItemURL: nil)
-                    }
+        let files = FileManager.default
+        var firstError: Error?
+        for cache in cacheURLs {
+            guard files.fileExists(atPath: cache.path) else { continue }
+            guard let entries = try? files.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
+                continue
+            }
+            for file in entries where matchesBundle(file.lastPathComponent, bundleId: bundleId) {
+                do {
+                    try RuntimeUninstall.removeTree(at: file, allowProtectedRemainder: true)
+                } catch {
+                    firstError = firstError ?? error
                 }
             }
         }
+        if let firstError {
+            Log.shared.error(firstError)
+        }
+    }
+
+    private static func matchesBundle(_ name: String, bundleId: String) -> Bool {
+        name == bundleId || name.hasPrefix(bundleId + ".")
     }
 
     @MainActor
@@ -229,9 +252,10 @@ class Uninstaller {
             for url in fullPruneURLs {
                 guard files.fileExists(atPath: url.path) else { continue }
                 for file in try files.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) {
-                    let bundleId = file.deletingPathExtension().lastPathComponent
-                    if danglingItems.contains(bundleId) {
-                        try files.trashItem(at: file, resultingItemURL: nil)
+                    if let bundleId = danglingItems.first(where: {
+                        matchesBundle(file.lastPathComponent, bundleId: $0)
+                    }) {
+                        try RuntimeUninstall.removeTree(at: file, allowProtectedRemainder: true)
                         prunedIds.insert(bundleId)
                     }
                 }

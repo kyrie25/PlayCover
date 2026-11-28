@@ -10,14 +10,9 @@ private func runtimeDylibify(_ source: UnsafePointer<CChar>, _ destination: Unsa
 /// Opt-in signed runtime; PlayTools owns display, device and input compatibility.
 enum IsolatedRuntime {
     private struct GuestSpec {
-        let bundleID: String
-        let source: URL
-        let executableName: String
-        let installName: String
-        let home: URL
-        let displayName: String
-        let width: Int
-        let height: Int
+        let bundleID, executableName, installName, displayName: String
+        let source, home: URL
+        let width, height: Int
         let resizable: Bool
         let icon: Data?
         let discordSettings: DiscordActivity
@@ -45,9 +40,10 @@ enum IsolatedRuntime {
             bundleVersion: app.info.bundleVersion, primaryIconName: app.info.primaryIconName)
             .flatMap { dockIcon($0).tiffRepresentation }
         let spec = GuestSpec(
-            bundleID: bundleIdentifier, source: app.url, executableName: app.info.executableName,
-            installName: bundleIdentifier + ".app", home: dataHome(for: runtimeID),
-            displayName: app.name, width: display.windowWidth, height: display.windowHeight,
+            bundleID: bundleIdentifier, executableName: app.info.executableName,
+            installName: bundleIdentifier + ".app", displayName: app.name,
+            source: app.url, home: dataHome(for: runtimeID),
+            width: display.windowWidth, height: display.windowHeight,
             resizable: display.resolution == 6, icon: icon, discordSettings: display.discordActivity)
 
         return try await Task.detached(priority: .userInitiated) {
@@ -240,18 +236,38 @@ enum IsolatedRuntime {
         }
     }
 
+    static func dataDirectory(for bundleID: String) -> URL? {
+        guard let resources = Bundle.main.resourceURL,
+              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
+        else { return nil }
+        return dataHome(for: runtimeID).appendingPathComponent(bundleID)
+    }
+
+    @MainActor
+    static func clearData(for bundleID: String) throws {
+        guard !isSwitchingRuntime(for: bundleID) else { throw "Wait for this game's data to finish moving." }
+        guard let resources = Bundle.main.resourceURL,
+              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
+        else { return }
+        let home = dataHome(for: runtimeID)
+        guard FileManager.default.fileExists(atPath: home.deletingLastPathComponent().path) else { return }
+        try RuntimeUninstall.clearData(bundleID: bundleID, home: home)
+    }
+
     @MainActor
     static func removeInstallation(for bundleID: String, clearData: Bool, checkRuntime: Bool = false) throws {
         guard !isSwitchingRuntime(for: bundleID) else { throw "Wait for this game's data to finish moving." }
         let files = FileManager.default
         let artifacts = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
-        guard checkRuntime || files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + ".noindex").path)
-            || files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + "-runtime.log").path)
-        else { return }
         guard let resources = Bundle.main.resourceURL,
               let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
         else { return }
-        try RuntimeUninstall.remove(bundleID: bundleID, clearData: clearData, home: dataHome(for: runtimeID),
+        let home = dataHome(for: runtimeID)
+        let hasRuntimeContainer = files.fileExists(atPath: home.deletingLastPathComponent().path)
+        let hasArtifacts = files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + ".noindex").path)
+            || files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + "-runtime.log").path)
+        guard checkRuntime || hasArtifacts || (clearData && hasRuntimeContainer) else { return }
+        try RuntimeUninstall.remove(bundleID: bundleID, clearData: clearData, home: home,
                                     artifacts: artifacts)
     }
 }

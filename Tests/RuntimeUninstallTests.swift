@@ -13,6 +13,7 @@ struct RuntimeUninstallTests {
 
         try testReservedIdentifiers(id: id, home: home, artifacts: artifacts)
         try testUninstallFlow(id: id, home: home, artifacts: artifacts)
+        try testClearDataAndSymlinkTree(id: id, home: home, root: root)
         try testSymlinkProtection(id: id, home: home, artifacts: artifacts)
         print("Runtime uninstall tests passed")
     }
@@ -66,6 +67,43 @@ struct RuntimeUninstallTests {
         try directory(data)
         try remove(true, id: id, home: home, artifacts: artifacts)
         precondition(!exists(data))
+    }
+
+    private static func testClearDataAndSymlinkTree(id: String, home: URL, root: URL) throws {
+        let files = FileManager.default
+        let modern = home.appendingPathComponent("apps.noindex/" + id + ".app")
+        let data = home.appendingPathComponent(id)
+        let outside = root.appendingPathComponent("outside-user-dir")
+        let sentinel = outside.appendingPathComponent("keep.txt")
+        let nestedFile = data.appendingPathComponent("Library/Application Support/game/assets.bin")
+        let scaffoldLink = data.appendingPathComponent("Desktop")
+        try directory(outside)
+        try Data("important".utf8).write(to: sentinel)
+        try write(["CFBundleIdentifier": id], at: modern.appendingPathComponent("Info.plist"))
+        try write(["playCoverWidth": 1920], at: modern.appendingPathComponent("RunnerFeatures.plist"))
+        try directory(nestedFile.deletingLastPathComponent())
+        try Data("asset".utf8).write(to: nestedFile)
+        try files.createSymbolicLink(at: scaffoldLink, withDestinationURL: outside)
+
+        // clearData removes guest data without following symlinks and leaves prepared bundles intact.
+        try RuntimeUninstall.clearData(bundleID: id, home: home)
+        precondition(!exists(data) && exists(modern) && exists(sentinel))
+        try files.removeItem(at: modern)
+
+        // removeTree with allowProtectedRemainder still purges removable siblings when one subdir is protected.
+        let container = root.appendingPathComponent("protected-container")
+        let protectedDir = container.appendingPathComponent("protected")
+        let lockedFile = protectedDir.appendingPathComponent("locked")
+        let gameData = container.appendingPathComponent("Data/Library/Application Support/big.pak")
+        try directory(protectedDir)
+        try Data("locked".utf8).write(to: lockedFile)
+        try directory(gameData.deletingLastPathComponent())
+        try Data("payload".utf8).write(to: gameData)
+        try files.setAttributes([.posixPermissions: 0o500], ofItemAtPath: protectedDir.path)
+        defer { try? files.setAttributes([.posixPermissions: 0o700], ofItemAtPath: protectedDir.path) }
+
+        try RuntimeUninstall.removeTree(at: container, allowProtectedRemainder: true)
+        precondition(!exists(gameData) && !exists(container.appendingPathComponent("Data")) && exists(lockedFile))
     }
 
     private static func testSymlinkProtection(id: String, home: URL, artifacts: URL) throws {

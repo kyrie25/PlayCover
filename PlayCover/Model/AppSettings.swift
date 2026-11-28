@@ -167,6 +167,23 @@ class AppSettings {
         }
     }
 
+    func setIsolatedRuntimeEnabled(_ enabled: Bool) throws {
+        let previous = settings
+        var updated = settings
+        updated.useIsolatedRuntime = enabled
+        if enabled {
+            updated.playChain = false
+            updated.playChainDebugging = false
+        }
+        suppressPersistence = true
+        defer { suppressPersistence = false }
+        settings = updated
+        guard encode() else {
+            settings = previous
+            throw "Could not save the game's runtime setting."
+        }
+    }
+
     public func reset() {
         var defaults = AppSettingsData()
         defaults.bundleIdentifier = info.bundleIdentifier

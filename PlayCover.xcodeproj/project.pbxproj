@@ -89,6 +89,8 @@
 		B44E8CD32C31C50200542038 /* SwiftSoup in Frameworks */ = {isa = PBXBuildFile; productRef = B44E8CD22C31C50200542038 /* SwiftSoup */; };
 		B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */; };
 		91BA923791734941BE299211 /* RuntimeProvisioning.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91BA923791734941BE299212 /* RuntimeProvisioning.swift */; };
+		4FFD5EA31F8546289EE8AF40 /* RuntimeUninstall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FFD5EA31F8546289EE8AF41 /* RuntimeUninstall.swift */; };
+		33F492EC7ED3476BAE5A3351 /* RuntimeDataMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F492EC7ED3476BAE5A3352 /* RuntimeDataMigration.swift */; };
 		FA8C94CB456A41ABBCAD72B6 /* IsolatedDiscordActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */; };
 		B6603E1128E206A300DEFA3F /* UninstallSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1028E206A300DEFA3F /* UninstallSettings.swift */; };
 		B6603E1328E2257800DEFA3F /* Uninstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6603E1228E2257800DEFA3F /* Uninstaller.swift */; };
@@ -111,7 +113,7 @@
 		365AFB0728847B75008B3542 /* Sparkle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sparkle.swift; sourceTree = "<group>"; };
 		3665EF8828832400007CF915 /* PlayCoverSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayCoverSettingsView.swift; sourceTree = "<group>"; usesTabs = 0; };
 		36B26B96288C724600859EFD /* UpdateSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateSettings.swift; sourceTree = "<group>"; };
-		4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = Dylibifier.m; path = Dependencies/iOSAppRunner/Host/Dylibifier.m; sourceTree = "<group>"; };
+		4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; name = Dylibifier.m; path = PlayCover/IsolatedRuntime/Catalyst/Host/Dylibifier.m; sourceTree = "<group>"; };
 		5314D1ED26C402EC00A0A727 /* Shell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shell.swift; sourceTree = "<group>"; };
 		531D717926E8313100F4A7AB /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		532644E126E79E5C002EA34D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -216,6 +218,8 @@
 		B6ABDA292971EEF700A46E80 /* ProgressVM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressVM.swift; sourceTree = "<group>"; };
 		E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IsolatedRuntime.swift; path = PlayCover/IsolatedRuntime/IsolatedRuntime.swift; sourceTree = "<group>"; };
 		91BA923791734941BE299212 /* RuntimeProvisioning.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RuntimeProvisioning.swift; path = PlayCover/IsolatedRuntime/RuntimeProvisioning.swift; sourceTree = "<group>"; };
+		4FFD5EA31F8546289EE8AF41 /* RuntimeUninstall.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RuntimeUninstall.swift; path = PlayCover/IsolatedRuntime/RuntimeUninstall.swift; sourceTree = "<group>"; };
+		33F492EC7ED3476BAE5A3352 /* RuntimeDataMigration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RuntimeDataMigration.swift; path = PlayCover/IsolatedRuntime/RuntimeDataMigration.swift; sourceTree = "<group>"; };
 		FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IsolatedDiscordActivity.swift; path = PlayCover/IsolatedRuntime/IsolatedDiscordActivity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -462,6 +466,8 @@
 			children = (
 				E9C0A375F3A25A5724D95180 /* IsolatedRuntime.swift */,
 				91BA923791734941BE299212 /* RuntimeProvisioning.swift */,
+				4FFD5EA31F8546289EE8AF41 /* RuntimeUninstall.swift */,
+				33F492EC7ED3476BAE5A3352 /* RuntimeDataMigration.swift */,
 				FA8C94CB456A41ABBCAD72B7 /* IsolatedDiscordActivity.swift */,
 				4C0AD1DC962F7BBEC5930D93 /* Dylibifier.m */,
 				AFE1686277DE0EE1B934F6CF /* RuntimeKeychainSlots.swift */,
@@ -760,6 +766,8 @@
 				923421F7275F40300030CD7D /* AppContainer.swift in Sources */,
 				B619B3C9A37A384E0CFB42D6 /* IsolatedRuntime.swift in Sources */,
 				91BA923791734941BE299211 /* RuntimeProvisioning.swift in Sources */,
+				4FFD5EA31F8546289EE8AF40 /* RuntimeUninstall.swift in Sources */,
+				33F492EC7ED3476BAE5A3351 /* RuntimeDataMigration.swift in Sources */,
 				FA8C94CB456A41ABBCAD72B6 /* IsolatedDiscordActivity.swift in Sources */,
 				321E87EEAD788ED1C94ABD4A /* Dylibifier.m in Sources */,
 				4A3C2001B1C2722A5F63B42E /* RuntimeKeychainSlots.swift in Sources */,

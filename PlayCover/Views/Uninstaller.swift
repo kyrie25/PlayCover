@@ -108,10 +108,23 @@ class Uninstaller {
         }
     }
 
+    @MainActor
     static func uninstall(_ app: PlayApp) async {
+        guard !app.isStarting, app.isolatedProcess?.isRunning != true else {
+            Log.shared.error("Quit the game before uninstalling it.")
+            return
+        }
+        let clearData = UninstallPreferences.shared.clearAppData
+        do {
+            try IsolatedRuntime.removeInstallation(for: app.info.bundleIdentifier, clearData: clearData,
+                                                   checkRuntime: app.settings.settings.useIsolatedRuntime)
+        } catch {
+            Log.shared.error(error)
+            return
+        }
         var uninstallNum = 0
 
-        if UninstallPreferences.shared.clearAppData {
+        if clearData {
             await app.clearAllCache()
             uninstallNum += 1
         }
@@ -172,7 +185,12 @@ class Uninstaller {
         await clearCache(of: app)
     }
 
+    @MainActor
     static func clearCache(of app: PlayApp) async {
+        guard !IsolatedRuntime.isSwitchingRuntime(for: app.info.bundleIdentifier) else {
+            Log.shared.error("Wait for this game's data to finish moving.")
+            return
+        }
         await app.clearAllCache()
     }
 
@@ -188,28 +206,56 @@ class Uninstaller {
         }
     }
 
+    @MainActor
     static func pruneFiles() {
         do {
-            let bundleIds = AppsVM.shared.apps.map { $0.info.bundleIdentifier }
-            let danglingItems = try PlayApp.bundleIDCache.filter { !bundleIds.contains($0) }
+            let files = FileManager.default
+            var installed = Set(AppsVM.shared.apps.map { $0.info.bundleIdentifier.lowercased() })
+            // The library model can still be refreshing when Preferences is open.
+            for app in try files.contentsOfDirectory(at: AppsVM.appDirectory, includingPropertiesForKeys: nil)
+                where app.pathExtension.lowercased() == "app" {
+                installed.insert(app.deletingPathExtension().lastPathComponent.lowercased())
+                if let id = Bundle(url: app)?.bundleIdentifier { installed.insert(id.lowercased()) }
+            }
+            let cacheExists = files.fileExists(atPath: PlayApp.bundleIDCacheURL.path)
+            let cached = cacheExists ? try PlayApp.bundleIDCache : []
+            let danglingItems = Set(cached.filter { !installed.contains($0.lowercased()) })
+            var isolatedCandidates = danglingItems
+            let runtime = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
+            if files.fileExists(atPath: runtime.path) {
+                let suffix = "-runtime.log"
+                for entry in try files.contentsOfDirectory(at: runtime, includingPropertiesForKeys: [.isRegularFileKey])
+                    where entry.lastPathComponent.hasSuffix(suffix) {
+                    let id = String(entry.lastPathComponent.dropLast(suffix.count))
+                    if try entry.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true,
+                       !installed.contains(id.lowercased()) {
+                        isolatedCandidates.insert(id)
+                    }
+                }
+            }
+            for id in isolatedCandidates {
+                try IsolatedRuntime.removeInstallation(for: id, clearData: true)
+            }
 
             var fullPruneURLs = pruneURLs
             fullPruneURLs.append(contentsOf: cacheURLs)
 
-            var prunedIds: [String] = []
-
+            var prunedIds = Set<String>()
             for url in fullPruneURLs {
-                url.enumerateContents(options: [.skipsSubdirectoryDescendants]) { file, _ in
+                guard files.fileExists(atPath: url.path) else { continue }
+                for file in try files.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) {
                     let bundleId = file.deletingPathExtension().lastPathComponent
                     if danglingItems.contains(bundleId) {
-                        try FileManager.default.trashItem(at: file, resultingItemURL: nil)
-                        prunedIds.append(bundleId)
+                        try files.trashItem(at: file, resultingItemURL: nil)
+                        prunedIds.insert(bundleId)
                     }
                 }
             }
 
-            try "\(PlayApp.bundleIDCache.filter({ !Set(prunedIds).contains($0) }).joined(separator: "\n"))\n"
-                .write(to: PlayApp.bundleIDCacheURL, atomically: false, encoding: .utf8)
+            if !prunedIds.isEmpty {
+                try "\(PlayApp.bundleIDCache.filter { !prunedIds.contains($0) }.joined(separator: "\n"))\n"
+                    .write(to: PlayApp.bundleIDCacheURL, atomically: true, encoding: .utf8)
+            }
         } catch {
             Log.shared.error(error)
         }

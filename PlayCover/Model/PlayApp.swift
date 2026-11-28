@@ -22,6 +22,7 @@ class PlayApp: BaseApp {
     // MARK: - Instance State
     var displaySleepAssertionID: IOPMAssertionID?
     public var isStarting = false
+    var isolatedProcess: Process?
     var sessionDisableKeychain: Bool = false
 
     // MARK: - Init
@@ -65,6 +66,9 @@ class PlayApp: BaseApp {
         do {
             isStarting = true
             defer { isStarting = false }
+            guard !(await IsolatedRuntime.isSwitchingRuntime(for: info.bundleIdentifier)) else {
+                throw "Wait for this game's data to finish moving before launching it."
+            }
 
             if prohibitedToPlay {
                 await clearAllCache()
@@ -89,7 +93,7 @@ class PlayApp: BaseApp {
 
             if settings.settings.useIsolatedRuntime {
                 createAlias()
-                try await IsolatedRuntime.launch(self)
+                isolatedProcess = try await IsolatedRuntime.launch(self)
                 return
             }
 

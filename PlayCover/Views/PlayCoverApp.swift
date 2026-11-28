@@ -42,8 +42,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     }
 
+    @MainActor
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !IsolatedRuntime.isSwitchingRuntime else {
+            Log.shared.error("Wait for the game data to finish moving before quitting PlayCover.")
+            return .terminateCancel
+        }
+        return .terminateNow
+    }
+
+    @MainActor
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        return true
+        !IsolatedRuntime.isSwitchingRuntime
     }
 
     @objc func powerStateChanged(_ notification: Notification) {

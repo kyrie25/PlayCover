@@ -89,7 +89,7 @@ struct AppSettingsView: View {
                 BypassesView(settings: $viewModel.settings,
                              hasPlayTools: $hasPlayTools,
                              task: $currentTask,
-                             app: viewModel.app)
+                             viewModel: viewModel)
                     .tabItem {
                         Text("settings.tab.bypasses")
                     }
@@ -113,9 +113,16 @@ struct AppSettingsView: View {
             HStack {
                 Spacer()
                 Button("settings.resetSettings") {
-                    resetSettingsCompletedAlert.toggle()
-                    viewModel.app.settings.reset()
-                    closeView.toggle()
+                    Task { @MainActor in
+                        do {
+                            try await viewModel.switchRuntime(to: false)
+                            viewModel.app.settings.reset()
+                            resetSettingsCompletedAlert.toggle()
+                            closeView.toggle()
+                        } catch {
+                            Log.shared.error(error)
+                        }
+                    }
                 }
                 Button("playapp.keymap") {
                     closeView.toggle()
@@ -127,7 +134,9 @@ struct AppSettingsView: View {
                 .tint(.accentColor)
                 .keyboardShortcut(.defaultAction)
             }
+            .disabled(viewModel.runtimeMove != nil)
         }
+        .interactiveDismissDisabled(viewModel.runtimeMove != nil)
         .disabled(currentTask != .none)
         .onChange(of: resetSettingsCompletedAlert) { _ in
             ToastVM.shared.showToast(
@@ -534,44 +543,90 @@ struct BypassesView: View {
     @State private var hasIntrospection: Bool
     @State private var hasIosFrameworks: Bool
 
-    var app: PlayApp
+    @ObservedObject var viewModel: AppSettingsVM
+    private var app: PlayApp { viewModel.app }
 
     init(settings: Binding<AppSettings>,
          hasPlayTools: Binding<Bool?>,
          task: Binding<BlockingTask>,
-         app: PlayApp) {
+         viewModel: AppSettingsVM) {
         self._settings = settings
         self._hasPlayTools = hasPlayTools
         self._task = task
-        self.app = app
+        self.viewModel = viewModel
 
-        let lsEnvironment = app.info.lsEnvironment["DYLD_LIBRARY_PATH"] ?? ""
+        let lsEnvironment = viewModel.app.info.lsEnvironment["DYLD_LIBRARY_PATH"] ?? ""
         self.hasIntrospection = lsEnvironment.contains(PlayApp.introspection)
         self.hasIosFrameworks = lsEnvironment.contains(PlayApp.iosFrameworks)
+    }
+
+    @ViewBuilder
+    private var runtimeStatus: some View {
+        switch viewModel.runtimeMove {
+        case .none:
+            Text(settings.settings.useIsolatedRuntime ? "Data in Catalyst" : "Data in Standard PlayCover")
+                .foregroundStyle(.secondary)
+        case .some(.moving(let files, let total, let rate)):
+            VStack(alignment: .trailing, spacing: 3) {
+                ProgressView(value: Double(files), total: Double(total))
+                    .accessibilityLabel("Moving game data")
+                Text("\(files.formatted()) of \(total.formatted()) files · \(rate.formatted()) files/s")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 205)
+        case .some(let phase):
+            VStack(alignment: .trailing, spacing: 3) {
+                ProgressView().progressViewStyle(.linear)
+                Text(phaseLabel(phase))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 205)
+        }
+    }
+
+    private func phaseLabel(_ phase: RuntimeDataMigration.Progress) -> String {
+        switch phase {
+        case .preparing: return "Checking game files…"
+        case .moving: return "Moving game data…"
+        case .finishing: return "Finishing move…"
+        case .restoring: return "Restoring game files…"
+        }
     }
 
     var body: some View {
         ScrollView {
             VStack {
-                Toggle("Use isolated runtime", isOn: $settings.settings.useIsolatedRuntime)
-                    .help("Uses separate game data and a native keychain for this game. " +
-                          "Keeps PlayTools graphics and input fixes. Existing game data is not migrated.")
-                    .onChange(of: settings.settings.useIsolatedRuntime) { enabled in
-                        if enabled {
-                            settings.settings.playChain = false
-                            settings.settings.playChainDebugging = false
+                HStack {
+                    Toggle("Use isolated runtime", isOn: Binding(
+                        get: { settings.settings.useIsolatedRuntime },
+                        set: { enabled in
+                            Task { @MainActor in
+                                do {
+                                    try await viewModel.switchRuntime(to: enabled)
+                                } catch {
+                                    Log.shared.error(error)
+                                }
+                            }
                         }
-                        app.removeAlias()
-                        app.createAlias()
-                    }
+                    ))
+                    .help("Moves this game's data when switching runtimes. Quit the game before switching.")
+                    .disabled(viewModel.runtimeMove != nil)
+                    Spacer()
+                    runtimeStatus
+                }
                 Spacer().frame(height: 20)
                 HStack(alignment: .center) {
                     Toggle("settings.playChain.enable", isOn: $settings.settings.playChain)
                         .help("settings.playChain.help")
-                        .disabled(!(hasPlayTools ?? true) || settings.settings.useIsolatedRuntime)
+                        .disabled(!(hasPlayTools ?? true) || settings.settings.useIsolatedRuntime || viewModel.runtimeMove != nil)
                     Spacer()
                     Toggle("settings.playChain.debugging", isOn: $settings.settings.playChainDebugging)
-                        .disabled(!settings.settings.playChain)
+                        .disabled(!settings.settings.playChain || viewModel.runtimeMove != nil)
                 }
                 Spacer()
                     .frame(height: 20)

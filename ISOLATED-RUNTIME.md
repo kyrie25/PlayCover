@@ -1,15 +1,14 @@
 # Isolated runtime integration
 
-This adaptation embeds [iOSAppRunner's `feat/launcher` runtime](https://github.com/ohaiibuzzle/iOSAppRunner/tree/feat/launcher)
+This adaptation embeds the Catalyst runtime from [iOSAppRunner's `feat/launcher` branch](https://github.com/ohaiibuzzle/iOSAppRunner/tree/feat/launcher)
 inside PlayCover, allowing games to run in a separate Mac Catalyst process while
 retaining PlayTools graphics, device, keymapping, and input compatibility features.
 It was motivated by [Blue Archive compatibility issue #1231](https://github.com/PlayCover/PlayCover/issues/1231).
 
 The integration is based on PlayCover `develop` commit
-`24bbed786fe1d5acfb0ffc2e619e126bdc09f22b`. The iOSAppRunner submodule is pinned to
-`6931452d1880653dc706236fefba054e7e008a78`, including its nested litehook dependency.
-The existing PlayTools dependency remains `v4.0.0-prerelease`; this adaptation does
-not patch PlayTools or the upstream runtime checkout.
+`24bbed786fe1d5acfb0ffc2e619e126bdc09f22b`. The selected runtime, dylibifier,
+and litehook sources are in [the Catalyst directory](PlayCover/IsolatedRuntime/Catalyst).
+PlayTools remains on the existing `v4.0.0-prerelease` dependency.
 
 ## Usage
 
@@ -25,10 +24,16 @@ a native per-game keychain. The normal Finder alias is replaced by a small app
 launcher that returns to PlayCover for preparation, so Finder/Spotlight launches
 use the same settings and runtime. Disabling the option restores the normal alias.
 
-The isolated runtime uses separate game data. Existing PlayCover data and PlayChain
-accounts are not migrated. Disabling the option returns to the normal launch path
-and its existing data. PlayCover's **Clear PlayChain** and **Clear App Data** commands
-still address normal PlayCover storage, not isolated-runtime storage.
+Quit the game before switching modes. The setting moves the game's files between
+its standard and isolated data folders. The toggle row shows the move's progress
+and file rate, then shows the data location when idle. If both folders already have a file at
+the same path, the switch stops without overwriting either file. Keychain items
+and the macOS-managed WebKit network cache stay with their original mode.
+Switching back to standard mode removes the prepared Catalyst bundle.
+
+Uninstall removes the prepared game, named runtime and runtime log. **Clear
+data** also removes the game's isolated data. **Prune Files** can find isolated
+leftovers from earlier uninstalls.
 
 ## How launching works
 
@@ -45,10 +50,11 @@ For an isolated launch, `IsolatedRuntime.launch()`:
    rather than assuming a particular provisioning team or runtime container name.
 3. Allocates or reuses the game's native keychain slot, then checks the upstream
    per-game `.guest.lock` to avoid replacing a running game's prepared bundle.
-4. Copies the installed game into a temporary `<UUID>.noindex` staging directory
-   inside the runtime container. Preparation runs outside the UI thread.
-5. Converts the copied executable into a loadable library with the upstream
-   `Host/Dylibifier.m`, restores executable permissions, and adds the integration's
+4. Prepares a clone of the installed game in a temporary `<UUID>.noindex`
+   staging directory inside the runtime container. Unchanged files share storage
+   on APFS. Preparation runs outside the UI thread.
+5. Converts the copied executable into a loadable library with the vendored
+   `Catalyst/Host/Dylibifier.m`, restores executable permissions, and adds the integration's
    feature settings and game icon.
 6. Seals the prepared bundle with a local ad-hoc signature after modifying it, then
    removes `com.apple.quarantine` only from this generated copy, matching existing
@@ -181,26 +187,17 @@ Do not delete the registry as a game reset; its keychain items would still exist
 
 ## Build integration
 
-The Xcode project compiles the host bridge, slot allocator, and upstream dylibifier
-into PlayCover. A **Build Isolated Runtime** phase invokes
-[`Scripts/build-isolated-runtime.sh`](Scripts/build-isolated-runtime.sh) to:
+The PlayCover project compiles the host bridge, slot allocator, and dylibifier.
+The **Build Isolated Runtime** phase runs
+[`Scripts/build-isolated-runtime.sh`](Scripts/build-isolated-runtime.sh) to build
+the in-tree arm64 Catalyst target in a clean Xcode environment. It embeds and
+verifies the signed runtime, packages the provisioning renewal helper, and
+builds the native `GameLauncher` forwarding executable.
 
-1. Copy the pinned runtime into an intermediate build directory, excluding Git
-   metadata, without modifying the submodule.
-2. Add `PlayCoverRuntime.h` and invoke its initializer immediately after the guest
-   main-bundle substitution. An explicit anchor check fails the build if the
-   upstream entry point changes and needs review. Redirect guest bundle lookup to
-   `apps.noindex` in this generated source, with a separate anchor check.
-3. Generate Catalyst-compatible entitlements, removing `homekit`,
-   `increased-memory-limit`, and `inter-app-audio` capabilities. Add home-relative
-   read/write access to `/Library/Containers/io.playcover.PlayCover/` and read-only
-   access to `/Library/Frameworks/PlayTools.framework/`.
-4. Build the arm64 Catalyst runtime in a clean environment, forwarding only basic
-   shell/user variables. This prevents the parent Xcode build's package/resource
-   settings from leaking into the nested build.
-5. Copy the runtime into PlayCover's resources and verify its deep/strict signature.
-6. Compile the native `GameLauncher` forwarding executable into PlayCover's
-   resources for generating indexed game entries.
+The Catalyst sources apply PlayCover's window and Dock integration after guest
+bundle setup and look for prepared bundles in `apps.noindex`. The embedded
+helper keeps the existing signing identifier and entitlements, preserving its
+sandbox and keychain identity.
 
 The existing framework/Sparkle signing phase now uses
 `EXPANDED_CODE_SIGN_IDENTITY` so it passes the selected signing identity directly
@@ -234,7 +231,6 @@ signing the personalized runtime copies. Forwarding launchers use local ad-hoc
 signatures and do not carry the runtime's restricted entitlements.
 
 ```sh
-git submodule update --init --recursive
 carthage bootstrap --use-xcframeworks
 FASTLANE=1 xcodebuild -project PlayCover.xcodeproj -scheme PlayCover \
   -configuration Nightly -destination 'platform=macOS,arch=arm64' \
@@ -255,7 +251,7 @@ build you distribute.
 
 | File | Adaptation |
 | --- | --- |
-| `.gitmodules`, `Dependencies/iOSAppRunner` | Pin the upstream launcher/runtime as a recursive submodule. |
+| `PlayCover/IsolatedRuntime/Catalyst/` | Store the selected runtime, its Catalyst-only Xcode target, the dylibifier, litehook, and upstream licenses. |
 | `.gitignore` | Ignore `build.noindex/`. |
 | `PlayCover.xcodeproj/project.pbxproj` | Compile the bridge/allocator/dylibifier, build/embed the runtime, and use the selected signing identity. |
 | `PlayCover/Model/AppSettings.swift` | Persist the default-off `useIsolatedRuntime` flag with backward-compatible decoding. |
@@ -269,7 +265,7 @@ build you distribute.
 | `PlayCover/IsolatedRuntime/GameLauncher.m` | Forward Finder/Spotlight launches to the host without an extra Dock tile. |
 | `PlayCover/IsolatedRuntime/RuntimeKeychainSlots.swift` | Preserve and allocate distinct native-keychain slots safely. |
 | `PlayCover/IsolatedRuntime/PlayCoverRuntime.h` | Apply runtime-only aspect-preserving scaling, Dock name, and icon fixes. |
-| `Scripts/build-isolated-runtime.sh` | Generate the integration overlay and entitlements, build and embed Catalyst. |
+| `Scripts/build-isolated-runtime.sh` | Build and embed the in-tree Catalyst helper and package profile renewal. |
 | `Tests/RuntimeKeychainSlotsTests.swift` | Exercise allocation, persistence, invalid data, exhaustion, and concurrency. |
 | `README.md`, `ISOLATED-RUNTIME.md` | Link and document this fork's adaptation. |
 

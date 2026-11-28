@@ -1,4 +1,0 @@
-[submodule "Dependencies/iOSAppRunner"]
-	path = Dependencies/iOSAppRunner
-	url = https://github.com/ohaiibuzzle/iOSAppRunner.git
-	branch = feat/launcher

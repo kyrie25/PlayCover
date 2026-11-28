@@ -10,14 +10,9 @@ private func runtimeDylibify(_ source: UnsafePointer<CChar>, _ destination: Unsa
 /// Opt-in signed runtime; PlayTools owns display, device and input compatibility.
 enum IsolatedRuntime {
     // swiftlint:disable:next function_body_length
-    static func launch(_ app: PlayApp) async throws {
+    static func launch(_ app: PlayApp) async throws -> Process {
         let bundleIdentifier = app.info.bundleIdentifier
-        guard !bundleIdentifier.isEmpty, bundleIdentifier != "free_list",
-              bundleIdentifier != ".", bundleIdentifier != "..",
-              !bundleIdentifier.contains("/"), !bundleIdentifier.contains("\\"),
-              !bundleIdentifier.contains("\0") else {
-            throw "The app has an invalid bundle identifier."
-        }
+        try validateBundleID(bundleIdentifier)
         guard app.hasPlayTools() else {
             throw "Install this app with PlayTools before enabling the isolated runtime."
         }
@@ -41,15 +36,13 @@ enum IsolatedRuntime {
         let source = app.url
         let executableName = app.info.executableName
         let installName = bundleIdentifier + ".app"
-        let home = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Containers")
-            .appendingPathComponent(runtimeID).appendingPathComponent("Data")
+        let home = dataHome(for: runtimeID)
         let guestHome = home.appendingPathComponent(bundleIdentifier)
         let apps = home.appendingPathComponent("apps.noindex")
         let target = apps.appendingPathComponent(installName)
         let logs = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
 
-        try await Task.detached(priority: .userInitiated) {
+        return try await Task.detached(priority: .userInitiated) {
             let fileManager = FileManager.default
             let registry = fileManager.homeDirectoryForCurrentUser
                 .appendingPathComponent("Library/Application Support/BaseiOSApp/keychain_slots.plist")
@@ -67,7 +60,11 @@ enum IsolatedRuntime {
             try fileManager.createDirectory(at: apps, withIntermediateDirectories: true)
             let staging = apps.appendingPathComponent(UUID().uuidString + ".noindex")
             defer { try? fileManager.removeItem(at: staging) }
-            try fileManager.copyItem(at: source, to: staging)
+            // Clone unchanged files on APFS while keeping the original executable for standard mode.
+            let copyFlags = copyfile_flags_t(COPYFILE_ALL | COPYFILE_RECURSIVE | COPYFILE_CLONE)
+            guard copyfile(source.path, staging.path, nil, copyFlags) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
             let guestExec = staging.appendingPathComponent(executableName)
             let converted = staging.appendingPathComponent("converted-executable")
             let result = guestExec.path.withCString { sourcePath in
@@ -143,7 +140,82 @@ enum IsolatedRuntime {
             }
             Log.shared.log("Launched \(bundleIdentifier) with isolated runtime + PlayTools " +
                            "(PID \(process.processIdentifier)).")
+            return process
         }.value
+    }
+
+    @MainActor private static var switchingGames = Set<String>()
+
+    @MainActor static var isSwitchingRuntime: Bool { !switchingGames.isEmpty }
+
+    @MainActor
+    static func isSwitchingRuntime(for bundleID: String) -> Bool {
+        switchingGames.contains(bundleID.lowercased())
+    }
+
+    @MainActor
+    static func setEnabled(_ enabled: Bool, for app: PlayApp,
+                           progress: @escaping @Sendable (RuntimeDataMigration.Progress) -> Void) async throws {
+        guard enabled != app.settings.settings.useIsolatedRuntime else { return }
+        let bundleID = app.info.bundleIdentifier
+        try validateBundleID(bundleID)
+        guard !isSwitchingRuntime(for: bundleID) else { throw "This game's data is already being moved." }
+        guard !app.isStarting, app.isolatedProcess?.isRunning != true,
+              NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty else {
+            throw "Quit the game before switching runtimes."
+        }
+        guard let resources = Bundle.main.resourceURL,
+              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
+        else { throw "The isolated runtime is missing from this PlayCover build." }
+
+        let home = dataHome(for: runtimeID)
+        let isolated = home.appendingPathComponent(bundleID)
+        let standard = app.container.containerUrl.appendingPathComponent("Data")
+        let moveKey = bundleID.lowercased()
+        switchingGames.insert(moveKey)
+        defer { switchingGames.remove(moveKey) }
+
+        try await Task.detached(priority: .userInitiated) {
+            let lock = try RuntimeUninstall.lockGuest(at: isolated)
+            defer { if let lock { close(lock) } }
+            try await RuntimeDataMigration.move(from: enabled ? standard : isolated,
+                                                to: enabled ? isolated : standard, progress: progress) {
+                if !enabled { try RuntimeUninstall.removePreparedBundles(bundleID: bundleID, home: home) }
+                try await MainActor.run { try app.settings.setIsolatedRuntimeEnabled(enabled) }
+            }
+        }.value
+        app.removeAlias()
+        app.createAlias()
+    }
+
+    private static func dataHome(for runtimeID: String) -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers")
+            .appendingPathComponent(runtimeID).appendingPathComponent("Data")
+    }
+
+    private static func validateBundleID(_ bundleIdentifier: String) throws {
+        guard !bundleIdentifier.isEmpty, bundleIdentifier != "free_list",
+              bundleIdentifier != ".", bundleIdentifier != "..",
+              !bundleIdentifier.contains("/"), !bundleIdentifier.contains("\\"),
+              !bundleIdentifier.contains("\0") else {
+            throw "The app has an invalid bundle identifier."
+        }
+    }
+
+    @MainActor
+    static func removeInstallation(for bundleID: String, clearData: Bool, checkRuntime: Bool = false) throws {
+        guard !isSwitchingRuntime(for: bundleID) else { throw "Wait for this game's data to finish moving." }
+        let files = FileManager.default
+        let artifacts = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
+        guard checkRuntime || files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + ".noindex").path)
+            || files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + "-runtime.log").path)
+        else { return }
+        guard let resources = Bundle.main.resourceURL,
+              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
+        else { return }
+        try RuntimeUninstall.remove(bundleID: bundleID, clearData: clearData, home: dataHome(for: runtimeID),
+                                    artifacts: artifacts)
     }
 
     static func createLauncher(for app: PlayApp) throws {

@@ -15,7 +15,11 @@ trap cleanup EXIT
 APP="$STAGE/PlayCover.app"
 BINARY="$APP/Contents/MacOS/fixture"
 IDENTIFIER="${PLAYCOVER_BUNDLE_IDENTIFIER:-io.playcover.PlayCover}"
-mkdir -p "$APP/Contents/MacOS"
+# Reuse a nested signing path to exercise dyld with both binaries signed by the fork.
+LIBRARY="$APP/Contents/Resources/GameLauncher"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+printf '%s\n' 'int signing_fixture_library(void) { return 0; }' |
+  clang -x c -dynamiclib -install_name '@executable_path/../Resources/GameLauncher' -o "$LIBRARY" -
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -28,7 +32,7 @@ EOF
 
 compile() {
   clang -Wno-deprecated-declarations -DVERSION="$1" "$ROOT/Tests/Fixtures/keychain-signing.c" \
-    -framework Security -framework CoreFoundation -o "$BINARY"
+    -Wl,-needed_library,"$LIBRARY" -framework Security -framework CoreFoundation -o "$BINARY"
 }
 
 denied() {

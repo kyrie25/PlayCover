@@ -66,7 +66,19 @@ sign_nested "$SPARKLE" -o runtime
 
 sign_nested "$APP/Contents/Resources/GameLauncher" -o runtime
 
+# A self-signed identity has no Apple Team ID for hardened library validation.
+# Preserve the host entitlements and apply the loading exception to the host only.
+HOST_ENTITLEMENTS="$STAGE/host.entitlements"
+/usr/bin/codesign --display --entitlements :- "$APP" > "$HOST_ENTITLEMENTS" 2>/dev/null || true
+if [ ! -s "$HOST_ENTITLEMENTS" ]; then
+  /usr/bin/plutil -create xml1 "$HOST_ENTITLEMENTS"
+fi
+LIBRARY_VALIDATION_KEY=:com.apple.security.cs.disable-library-validation
+if ! /usr/libexec/PlistBuddy -c "Set $LIBRARY_VALIDATION_KEY true" "$HOST_ENTITLEMENTS" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Add $LIBRARY_VALIDATION_KEY bool true" "$HOST_ENTITLEMENTS"
+fi
+
 /usr/bin/codesign --force --options runtime --sign "$FINGERPRINT" --keychain "$KEYCHAIN" --timestamp=none \
-  --requirements "=designated => $REQUIREMENT" "$APP"
+  --entitlements "$HOST_ENTITLEMENTS" --requirements "=designated => $REQUIREMENT" "$APP"
 /usr/bin/codesign --verify --deep --strict -R "=$REQUIREMENT" "$APP"
 /usr/bin/codesign -d -r- "$APP"

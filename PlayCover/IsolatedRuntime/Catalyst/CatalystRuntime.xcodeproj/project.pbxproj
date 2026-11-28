@@ -1,0 +1,564 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXFileReference section */
+		AB2000000000000000000012 /* Runtime-Catalyst.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Runtime-Catalyst.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AB2000000000000000000042 /* Exceptions for "litehook" folder in "BaseiOSAppRuntime-Catalyst" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LICENSE,
+			);
+			target = AB2000000000000000000002 /* BaseiOSAppRuntime-Catalyst */;
+		};
+		AB2000000000000000000044 /* Exceptions for "Runtime" folder in "BaseiOSAppRuntime-Catalyst" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				Runtime.entitlements,
+			);
+			target = AB2000000000000000000002 /* BaseiOSAppRuntime-Catalyst */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AB2000000000000000000022 /* Runtime */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB2000000000000000000044 /* Exceptions for "Runtime" folder in "BaseiOSAppRuntime-Catalyst" target */,
+			);
+			path = Runtime;
+			sourceTree = "<group>";
+		};
+		AB7D90832F5AC9970061186D /* litehook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AB2000000000000000000042 /* Exceptions for "litehook" folder in "BaseiOSAppRuntime-Catalyst" target */,
+			);
+			path = litehook;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AB20000000000000000000C2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AB2000000000000000000031 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AB2000000000000000000012 /* Runtime-Catalyst.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AB97C8432F4A326800D24724 = {
+			isa = PBXGroup;
+			children = (
+				AB2000000000000000000022 /* Runtime */,
+				AB7D90832F5AC9970061186D /* litehook */,
+				AB2000000000000000000031 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AB2000000000000000000002 /* BaseiOSAppRuntime-Catalyst */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB20000000000000000000D2 /* Build configuration list for PBXNativeTarget "BaseiOSAppRuntime-Catalyst" */;
+			buildPhases = (
+				AB20000000000000000000E2 /* Sources */,
+				AB20000000000000000000C2 /* Frameworks */,
+				AB20000000000000000000F2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AB2000000000000000000022 /* Runtime */,
+				AB7D90832F5AC9970061186D /* litehook */,
+			);
+			name = "BaseiOSAppRuntime-Catalyst";
+			productName = BaseiOSApp;
+			productReference = AB2000000000000000000012 /* Runtime-Catalyst.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AB97C8442F4A326800D24724 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 2720;
+				TargetAttributes = {
+					AB2000000000000000000002 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = AB97C8472F4A326800D24724 /* Build configuration list for PBXProject "CatalystRuntime" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				ja,
+				ko,
+				vi,
+				"zh-Hans",
+				"zh-Hant",
+				es,
+				fr,
+				de,
+			);
+			mainGroup = AB97C8432F4A326800D24724;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AB2000000000000000000031 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AB2000000000000000000002 /* BaseiOSAppRuntime-Catalyst */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AB20000000000000000000F2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AB20000000000000000000E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AB2000000000000000000071 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				AUTOMATION_APPLE_EVENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = Runtime/Runtime.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_DOWNLOADS_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MOVIES_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MUSIC_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = YES;
+				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
+				ENABLE_RESOURCE_ACCESS_PRINTING = YES;
+				ENABLE_RESOURCE_ACCESS_USB = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "${SRCROOT}/litehook/external/include/";
+				INFOPLIST_FILE = Runtime/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS App Loader (Catalyst)";
+				INFOPLIST_KEY_GCSupportsControllerUserInteraction = YES;
+				INFOPLIST_KEY_GCSupportsGameMode = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSAppDataUsageDescription = "Needed so guests can access their data";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSBluetoothWhileInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFallDetectionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFileProviderPresenceUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFinancialDataUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFocusStatusUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSHandsTrackingUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSHomeKitUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSIdentityUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationTemporaryUsageDescriptionDictionary = "Guest needs it";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMainCameraUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNearbyInteractionAllowOnceUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNetworkVolumesUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "Guest needs it\n\n";
+				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSensorKitUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSiriUsageDescription = "The guest app is requesting for this permission.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSVoIPUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "";
+				"OTHER_LDFLAGS[sdk=macosx*]" = (
+					"-Xlinker",
+					"-platform_version",
+					"-Xlinker",
+					"mac-catalyst",
+					"-Xlinker",
+					15.6,
+					"-Xlinker",
+					26.0,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DEVELOPMENT_TEAM).dev.ohaiibuzzle.BaseiOSApp.RuntimeCatalyst";
+				PRODUCT_NAME = "Runtime-Catalyst";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				REGISTER_APP_GROUPS = YES;
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = YES;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AB2000000000000000000072 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				AUTOMATION_APPLE_EVENTS = NO;
+				CODE_SIGN_ENTITLEMENTS = Runtime/Runtime.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_DOWNLOADS_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MOVIES_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MUSIC_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = YES;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = YES;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = YES;
+				ENABLE_RESOURCE_ACCESS_CAMERA = YES;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = YES;
+				ENABLE_RESOURCE_ACCESS_LOCATION = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
+				ENABLE_RESOURCE_ACCESS_PRINTING = YES;
+				ENABLE_RESOURCE_ACCESS_USB = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
+				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = "${SRCROOT}/litehook/external/include/";
+				INFOPLIST_FILE = Runtime/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "iOS App Loader (Catalyst)";
+				INFOPLIST_KEY_GCSupportsControllerUserInteraction = YES;
+				INFOPLIST_KEY_GCSupportsGameMode = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSAppDataUsageDescription = "Needed so guests can access their data";
+				INFOPLIST_KEY_NSAppleMusicUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSBluetoothWhileInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFallDetectionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFileProviderPresenceUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFinancialDataUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSFocusStatusUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSGKFriendListUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSHandsTrackingUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSHomeKitUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSIdentityUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationAlwaysUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationTemporaryUsageDescriptionDictionary = "Guest needs it";
+				INFOPLIST_KEY_NSLocationUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMainCameraUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNearbyInteractionAllowOnceUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSNetworkVolumesUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "Guest needs it\n\n";
+				INFOPLIST_KEY_NSRemovableVolumesUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSensorKitUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSiriUsageDescription = "The guest app is requesting for this permission.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivitiesFrequentUpdates = YES;
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_NSVoIPUsageDescription = "Guest needs it";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIRequiredDeviceCapabilities = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportsDocumentBrowser = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "";
+				"OTHER_LDFLAGS[sdk=macosx*]" = (
+					"-Xlinker",
+					"-platform_version",
+					"-Xlinker",
+					"mac-catalyst",
+					"-Xlinker",
+					15.6,
+					"-Xlinker",
+					26.0,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(DEVELOPMENT_TEAM).dev.ohaiibuzzle.BaseiOSApp.RuntimeCatalyst";
+				PRODUCT_NAME = "Runtime-Catalyst";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				REGISTER_APP_GROUPS = YES;
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = YES;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AB97C8672F4A326A00D24724 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+			};
+			name = Debug;
+		};
+		AB97C8682F4A326A00D24724 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AB20000000000000000000D2 /* Build configuration list for PBXNativeTarget "BaseiOSAppRuntime-Catalyst" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB2000000000000000000071 /* Debug */,
+				AB2000000000000000000072 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB97C8472F4A326800D24724 /* Build configuration list for PBXProject "CatalystRuntime" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB97C8672F4A326A00D24724 /* Debug */,
+				AB97C8682F4A326A00D24724 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AB97C8442F4A326800D24724 /* Project object */;
+}

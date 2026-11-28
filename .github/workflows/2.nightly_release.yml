@@ -47,6 +47,7 @@ jobs:
         shell: bash
         env:
           FASTLANE: "1"
+          PLAYCOVER_DEFER_RUNTIME_BUILD: "1"
         run: |
           xcodebuild -project PlayCover.xcodeproj -scheme PlayCover \
             -configuration Nightly -destination 'platform=macOS,arch=arm64' \
@@ -84,6 +85,8 @@ jobs:
           /usr/bin/codesign --verify --deep --strict \
             -R "=identifier \"io.playcover.PlayCover\" and certificate leaf = H\"$FINGERPRINT\"" \
             "$MOUNT/PlayCover.app"
+          test -f "$MOUNT/PlayCover.app/Contents/Resources/IsolatedRuntimeSource/build-local.sh"
+          test -x "$MOUNT/PlayCover.app/Contents/Resources/GameLauncher"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7

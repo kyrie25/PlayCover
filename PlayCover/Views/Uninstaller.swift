@@ -5,7 +5,6 @@
 //  Created by TheMoonThatRises on 9/26/22.
 //
 
-import Darwin
 import SwiftUI
 
 struct CheckBoxHelper {
@@ -111,13 +110,21 @@ class Uninstaller {
 
     @MainActor
     static func uninstall(_ app: PlayApp) async {
-        guard !app.isStarting else {
+        guard !app.isStarting, app.isolatedProcess?.isRunning != true else {
             Log.shared.error("Quit the game before uninstalling it.")
+            return
+        }
+        let clearData = UninstallPreferences.shared.clearAppData
+        do {
+            try IsolatedRuntime.removeInstallation(for: app.info.bundleIdentifier, clearData: clearData,
+                                                   checkRuntime: app.settings.settings.useIsolatedRuntime)
+        } catch {
+            Log.shared.error(error)
             return
         }
         var uninstallNum = 0
 
-        if UninstallPreferences.shared.clearAppData {
+        if clearData {
             await app.clearAllCache()
             uninstallNum += 1
         }
@@ -180,8 +187,18 @@ class Uninstaller {
 
     @MainActor
     static func clearCache(of app: PlayApp) async {
-        guard !app.isStarting else {
+        guard !app.isStarting, app.isolatedProcess?.isRunning != true else {
             Log.shared.error("Quit the game before clearing its data.")
+            return
+        }
+        guard !IsolatedRuntime.isSwitchingRuntime(for: app.info.bundleIdentifier) else {
+            Log.shared.error("Wait for this game's data to finish moving.")
+            return
+        }
+        do {
+            try IsolatedRuntime.clearData(for: app.info.bundleIdentifier)
+        } catch {
+            Log.shared.error(error)
             return
         }
         await app.clearAllCache()
@@ -191,13 +208,13 @@ class Uninstaller {
         let files = FileManager.default
         var firstError: Error?
         for cache in cacheURLs {
-            guard files.fileExists(atPath: cache.path),
-                  let entries = try? files.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
+            guard files.fileExists(atPath: cache.path) else { continue }
+            guard let entries = try? files.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
                 continue
             }
             for file in entries where matchesBundle(file.lastPathComponent, bundleId: bundleId) {
                 do {
-                    try removeTree(at: file, allowProtectedRemainder: true)
+                    try RuntimeUninstall.removeTree(at: file, allowProtectedRemainder: true)
                 } catch {
                     firstError = firstError ?? error
                 }
@@ -206,6 +223,10 @@ class Uninstaller {
         if let firstError {
             Log.shared.error(firstError)
         }
+    }
+
+    private static func matchesBundle(_ name: String, bundleId: String) -> Bool {
+        name == bundleId || name.hasPrefix(bundleId + ".")
     }
 
     @MainActor
@@ -222,6 +243,7 @@ class Uninstaller {
             let cacheExists = files.fileExists(atPath: PlayApp.bundleIDCacheURL.path)
             let cached = cacheExists ? try PlayApp.bundleIDCache : []
             let danglingItems = Set(cached.filter { !installed.contains($0.lowercased()) })
+            try pruneIsolatedInstallations(dangling: danglingItems, installed: installed)
 
             var fullPruneURLs = pruneURLs
             fullPruneURLs.append(contentsOf: cacheURLs)
@@ -233,7 +255,7 @@ class Uninstaller {
                     if let bundleId = danglingItems.first(where: {
                         matchesBundle(file.lastPathComponent, bundleId: $0)
                     }) {
-                        try removeTree(at: file, allowProtectedRemainder: true)
+                        try RuntimeUninstall.removeTree(at: file, allowProtectedRemainder: true)
                         prunedIds.insert(bundleId)
                     }
                 }
@@ -247,60 +269,25 @@ class Uninstaller {
             Log.shared.error(error)
         }
     }
-}
 
-private extension Uninstaller {
-    static func matchesBundle(_ name: String, bundleId: String) -> Bool {
-        name == bundleId || name.hasPrefix(bundleId + ".")
-    }
-
-    /// Removes `url` without following symlinks. On modern macOS, `containermanagerd`
-    /// protects container roots, metadata plists, and WebKit caches with EPERM; when
-    /// `allowProtectedRemainder` is true, removable contents are still purged instead
-    /// of aborting at the first protected file.
-    static func removeTree(at url: URL, allowProtectedRemainder: Bool = false) throws {
-        guard let kind = try entryType(of: url) else { return }
-        if kind != S_IFDIR {
-            if unlink(url.path) == 0 || errno == ENOENT { return }
-            if allowProtectedRemainder && (errno == EPERM || errno == EACCES) { return }
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        do {
-            try FileManager.default.removeItem(at: url)
-        } catch where allowProtectedRemainder && isPermissionError(error) {
-            let children = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-            for child in children {
-                do {
-                    try removeTree(at: child, allowProtectedRemainder: true)
-                } catch where isPermissionError(error) {
-                    continue
+    @MainActor
+    private static func pruneIsolatedInstallations(dangling: Set<String>, installed: Set<String>) throws {
+        let files = FileManager.default
+        var candidates = dangling
+        let runtime = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
+        if files.fileExists(atPath: runtime.path) {
+            let suffix = "-runtime.log"
+            for entry in try files.contentsOfDirectory(at: runtime, includingPropertiesForKeys: [.isRegularFileKey])
+                where entry.lastPathComponent.hasSuffix(suffix) {
+                let id = String(entry.lastPathComponent.dropLast(suffix.count))
+                if try entry.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true,
+                   !installed.contains(id.lowercased()) {
+                    candidates.insert(id)
                 }
             }
-            if rmdir(url.path) != 0 && errno != ENOENT && errno != ENOTEMPTY && errno != EPERM && errno != EACCES {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
         }
-    }
-
-    static func entryType(of url: URL) throws -> mode_t? {
-        var data = stat()
-        if lstat(url.path, &data) == 0 { return data.st_mode & S_IFMT }
-        if errno == ENOENT { return nil }
-        throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-    }
-
-    static func isPermissionError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        if nsError.domain == NSPOSIXErrorDomain {
-            return nsError.code == Int(EPERM) || nsError.code == Int(EACCES)
+        for id in candidates {
+            try IsolatedRuntime.removeInstallation(for: id, clearData: true)
         }
-        if nsError.domain == NSCocoaErrorDomain &&
-            (nsError.code == NSFileWriteNoPermissionError || nsError.code == NSFileReadNoPermissionError) {
-            return true
-        }
-        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
-            return isPermissionError(underlying)
-        }
-        return false
     }
 }

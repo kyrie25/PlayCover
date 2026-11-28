@@ -22,6 +22,7 @@ class PlayApp: BaseApp {
     // MARK: - Instance State
     var displaySleepAssertionID: IOPMAssertionID?
     public var isStarting = false
+    var isolatedProcess: Process?
     var sessionDisableKeychain: Bool = false
 
     // MARK: - Init
@@ -65,6 +66,9 @@ class PlayApp: BaseApp {
         do {
             isStarting = true
             defer { isStarting = false }
+            guard !(await IsolatedRuntime.isSwitchingRuntime(for: info.bundleIdentifier)) else {
+                throw "Wait for this game's data to finish moving before launching it."
+            }
 
             if prohibitedToPlay {
                 await clearAllCache()
@@ -87,38 +91,36 @@ class PlayApp: BaseApp {
                 try PlayTools.installPluginInIPA(url)
             }
 
-            if try !Entitlements.areEntitlementsValid(app: self) {
-                sign()
+            if settings.settings.useIsolatedRuntime {
+                createAlias()
+                isolatedProcess = try await IsolatedRuntime.launch(self)
+                return
             }
 
-            if try !isInfoPlistSigned() {
-                try Shell.signApp(executable)
-            }
-
-            // Wait for keychain unlock to finish before continuing
-            await unlockKeyCover()
-
-            if try !PlayTools.isInstalled() {
-                Log.shared.error("PlayTools are not installed! Please move PlayCover.app into Applications!")
-            } else if try !Macho.isMachoValidArch(executable) {
-                Log.shared.error("The app threw an error during conversion.")
-            } else {
-                // Clear any debug-related env vars that could affect the launched app
-                self.clearDebugAffectingEnvironment()
-
-                if settings.openWithLLDB {
-                    try Shell.lldb(executable, withTerminalWindow: settings.openLLDBWithTerminal)
-                } else {
-                    // The bundle may have been modified and re-signed above, so rebuild the
-                    // alias to keep its Info.plist copy in sync with the sealed bundle
-                    removeAlias()
-                    createAlias()
-
-                    runAppExec() // Splitting to reduce complexity
-                }
-            }
+            try await launchStandard()
         } catch {
             Log.shared.error(error)
+        }
+    }
+
+    private func launchStandard() async throws {
+        if try !Entitlements.areEntitlementsValid(app: self) { sign() }
+        if try !isInfoPlistSigned() { try Shell.signApp(executable) }
+        await unlockKeyCover()
+        if try !PlayTools.isInstalled() {
+            Log.shared.error("PlayTools are not installed! Please move PlayCover.app into Applications!")
+        } else if try !Macho.isMachoValidArch(executable) {
+            Log.shared.error("The app threw an error during conversion.")
+        } else {
+            self.clearDebugAffectingEnvironment()
+            if settings.openWithLLDB {
+                try Shell.lldb(executable, withTerminalWindow: settings.openLLDBWithTerminal)
+            } else {
+                // Rebuild the alias to keep its Info.plist copy in sync with the sealed bundle.
+                removeAlias()
+                createAlias()
+                runAppExec() // Splitting to reduce complexity
+            }
         }
     }
 }
@@ -318,6 +320,12 @@ extension PlayApp {
     }
 
     func openAppCache() {
+        if settings.settings.useIsolatedRuntime,
+           let isolated = IsolatedRuntime.dataDirectory(for: info.bundleIdentifier),
+           FileManager.default.fileExists(atPath: isolated.path) {
+            isolated.showInFinderAndSelectLastComponent()
+            return
+        }
         container.containerUrl.showInFinderAndSelectLastComponent()
     }
 
@@ -332,6 +340,7 @@ extension PlayApp {
     }
 
     func deleteApp() {
+        if settings.settings.useIsolatedRuntime { removeAlias() }
         FileManager.default.delete(at: URL(fileURLWithPath: url.path))
         AppsVM.shared.fetchApps()
     }

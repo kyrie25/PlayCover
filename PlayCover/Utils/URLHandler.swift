@@ -53,6 +53,17 @@ struct URLHandler {
         // Example: playcoverapp://source?action=add&url=https://homebrew.playcover.io
         // Switch case for main uri path
         switch uriHost {
+        case "app":
+            guard params.first(where: { $0.name == "action" })?.value == "open",
+                  let identifier = params.first(where: { $0.name == "bundleid" })?.value else { return }
+            let library = AppsVM.shared
+            Task { @MainActor in
+                guard let app = library.apps.first(where: { $0.info.bundleIdentifier == identifier }) else {
+                    Log.shared.error("This game is no longer installed in PlayCover.")
+                    return
+                }
+                if !app.isStarting { await app.launch() }
+            }
         case "source":
             processSourceURL(params: params)
         default:

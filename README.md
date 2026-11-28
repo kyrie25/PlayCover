@@ -32,6 +32,17 @@
 </div>
 
 <!-- ABOUT THE PROJECT -->
+## Isolated runtime adaptation
+
+This fork adds an optional per-game Catalyst runtime based on
+[iOSAppRunner](https://github.com/ohaiibuzzle/iOSAppRunner/tree/feat/launcher), while
+retaining PlayTools graphics and input compatibility features. Enable **Use isolated
+runtime** in a game's **Settings → Bypasses**. The option is off by default and uses
+separate game data and a native per-game keychain.
+
+See [Isolated runtime integration](ISOLATED-RUNTIME.md) for the complete change
+description, architecture, build instructions, and verification limits.
+
 ## About The Project
 
 Welcome to PlayCover! This software is all about allowing you to run iOS apps and games on Apple Silicon devices running macOS 12.0 or newer.

@@ -48,20 +48,19 @@ For an isolated launch, `IsolatedRuntime.launch()`:
    PlayChain-enabled configurations.
 2. Reads the embedded runtime's bundle identifier and executable dynamically,
    rather than assuming a particular provisioning team or runtime container name.
-3. Allocates or reuses the game's native keychain slot, then checks the upstream
-   per-game `.guest.lock` to avoid replacing a running game's prepared bundle.
-4. Prepares a clone of the installed game in a temporary `<UUID>.noindex`
-   staging directory inside the runtime container. Unchanged files share storage
-   on APFS. Preparation runs outside the UI thread.
+3. Allocates or reuses the game's native keychain slot and selects a valid profile.
+4. Prepares a clone of the installed game under PlayCover's
+   `IsolatedRuntime/Incoming.noindex`, using a fresh request UUID. Unchanged files
+   share storage on APFS. Preparation runs outside the UI thread.
 5. Converts the copied executable into a loadable library with the vendored
    `Catalyst/Host/Dylibifier.m`, restores executable permissions, and adds the integration's
    feature settings and game icon.
 6. Seals the prepared bundle with a local ad-hoc signature after modifying it, then
    removes `com.apple.quarantine` only from this generated copy, matching existing
    PlayCover IPA-installation behavior. Global macOS security settings are unchanged.
-7. Replaces the prepared game inside `apps.noindex`. On migration, unregisters and
-   removes only the old generated copy carrying PlayCover's feature marker. This
-   prevents an internal bundle-ID-named copy from appearing in app search.
+7. Passes the request UUID to the signed runtime. The runtime takes the per-game
+   lock in its own container and imports the prepared bundle into `apps.noindex`
+   before launching the game. PlayCover removes the request directory on exit.
 8. Copies the embedded runtime into a per-game `.noindex` directory, giving the
    copy the game's directory name, `CFBundleName`, `CFBundleDisplayName`, and an
    ICNS resource derived from the rounded icon. The bundle identifier in its
@@ -216,7 +215,8 @@ Apple Account, PlayCover compiles and signs `Runtime-Catalyst.app` locally into
 (or when enabling **Use isolated runtime**), rebuilding automatically if the
 bundled sources change while preserving the user's development team and
 existing game data. The **?** beside **Use isolated runtime** opens the Xcode
-signing guide and checks for a local Apple Development certificate.
+signing guide and checks for a local Apple Development certificate. The fork's
+Nightly builds link to GitHub Actions for updates.
 
 ### Automatic profile renewal
 

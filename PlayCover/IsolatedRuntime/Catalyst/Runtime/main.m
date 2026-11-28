@@ -18,6 +18,7 @@
 #import <fcntl.h>
 #import <sys/file.h>
 #import "GroupContainer.h"
+#import "PlayCoverIncoming.h"
 
 @import MachO;
 
@@ -70,43 +71,53 @@ static int keychainSlotFromArgv(int argc, char *argv[]) {
 // Flock held for the process lifetime; the host probes it (non-blocking)
 // before migrating a guest. Kernel-released on process death.
 //
-// Returns the held fd, or -1 when the guest is already running.
+// Returns 0 on success, 2 for an already-running guest, or 1 for another failure.
 static int acquireGuestLock(NSString *guestHomeDir) {
-    static int lockFD = -1;
-    NSString *lockPath = [guestHomeDir stringByAppendingPathComponent:@".guest.lock"];
-    int fd = open(lockPath.fileSystemRepresentation, O_RDWR | O_CREAT, 0644);
+    int home = PCOpenRealDirectory(guestHomeDir);
+    if (home < 0) {
+        NSLog(@"[runtime] Could not open guest home %@: %s", guestHomeDir, strerror(errno));
+        return 1;
+    }
+    int fd = openat(home, ".guest.lock", O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC, 0600);
+    int openError = errno;
+    close(home);
     if (fd < 0) {
-        NSLog(@"[runtime] could not open guest lock %@: %s", lockPath, strerror(errno));
-        return -1;
+        NSLog(@"[runtime] Could not open guest lock for %@: %s", guestHomeDir, strerror(openError));
+        return 1;
+    }
+    struct stat lock;
+    if (fstat(fd, &lock) != 0 || !S_ISREG(lock.st_mode)) {
+        NSLog(@"[runtime] Guest lock is not a regular file");
+        close(fd);
+        return 1;
     }
     if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
-        NSLog(@"[runtime] guest %@ is already running; refusing double launch", guestHomeDir.lastPathComponent);
+        int lockError = errno;
         close(fd);
-        return -1;
+        if (lockError == EWOULDBLOCK || lockError == EAGAIN) {
+            NSLog(@"[runtime] Guest %@ already running", guestHomeDir.lastPathComponent);
+            return 2;
+        }
+        NSLog(@"[runtime] Could not lock guest %@: %s", guestHomeDir.lastPathComponent, strerror(lockError));
+        return 1;
     }
-    // Deliberately never closed: the lock must outlive main().
-    lockFD = fd;
-    return lockFD;
+    // Deliberately never closed: the lock must last until the process exits.
+    return 0;
 }
 
 int main(int argc, char * argv[]) {
 
     NSString *appBundleName = appToLaunchFromArgv(argc, argv);
     int keychainSlot = keychainSlotFromArgv(argc, argv);
-
-    NSString *appBundlePath = nil;
-    if (appBundleName.length > 0) {
-        NSString *candidate = [NSHomeDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"apps.noindex/%@", appBundleName]];
-        BOOL isDir = NO;
-        if ([[NSFileManager defaultManager] fileExistsAtPath:candidate isDirectory:&isDir] && isDir) {
-            appBundlePath = candidate;
-        } else {
-            NSLog(@"[runtime] Requested app bundle missing at %@", candidate);
-        }
+    NSString *incomingToken = nil;
+    if (!PCReadIncomingToken(argc, argv, &incomingToken)) {
+        NSLog(@"[runtime] Invalid --playcover-incoming; refusing to launch");
+        return 1;
     }
 
     // Headless runtime: no selection UI, the host app is the only launcher.
-    if (!appBundlePath) {
+    if (appBundleName.length == 0 || [appBundleName hasPrefix:@"."] ||
+        ![appBundleName isEqualToString:appBundleName.lastPathComponent]) {
         NSLog(@"[runtime] No valid launch request (--launch-app <installName>); exiting");
         return 1;
     }
@@ -125,8 +136,41 @@ int main(int argc, char * argv[]) {
         return 3;
     }
 
-    // Load the App.app bundle from [shared container Data]/apps/[app bundle name]
-    NSBundle *appBundle = [NSBundle bundleWithPath:appBundlePath];
+    NSString *homeDir = NSHomeDirectory();
+    NSString *appsDir = [homeDir stringByAppendingPathComponent:@"apps.noindex"];
+    NSString *appBundlePath = [appsDir stringByAppendingPathComponent:appBundleName];
+    NSBundle *appBundle = incomingToken ? nil : [NSBundle bundleWithPath:appBundlePath];
+    NSString *identifier = incomingToken ? appBundleName.stringByDeletingPathExtension : appBundle.bundleIdentifier;
+    if (incomingToken && (![appBundleName.pathExtension isEqualToString:@"app"] || !PCValidGuestIdentifier(identifier))) {
+        NSLog(@"[runtime] Invalid bundle identifier for --playcover-incoming");
+        return 1;
+    }
+    if (identifier.length == 0 || [identifier hasPrefix:@"."] ||
+        ![identifier isEqualToString:identifier.lastPathComponent]) {
+        NSLog(@"[runtime] Requested app bundle is missing a valid identifier at %@", appBundlePath);
+        return 1;
+    }
+
+    // Keep the guest locked while replacing the prepared bundle and while running it.
+    NSString *guestHomeDir = [homeDir stringByAppendingPathComponent:identifier];
+    if (mkdir(guestHomeDir.fileSystemRepresentation, 0700) != 0 && errno != EEXIST) {
+        NSLog(@"[runtime] Could not create guest home %@: %s", guestHomeDir, strerror(errno));
+        return 1;
+    }
+    int guestLockStatus = acquireGuestLock(guestHomeDir);
+    if (guestLockStatus != 0) {
+        return guestLockStatus;
+    }
+    if (incomingToken) {
+        if (!PCInstallIncomingGuest(incomingToken, identifier, appBundleName, homeDir)) {
+            return 1;
+        }
+        appBundle = [NSBundle bundleWithPath:appBundlePath];
+    }
+    if (!appBundle.executablePath.length) {
+        NSLog(@"[runtime] Requested app bundle is missing its executable at %@", appBundlePath);
+        return 1;
+    }
 
     NSLog(@"%@", [NSString stringWithFormat:@"Bundle loaded %@", appBundle.bundleIdentifier]);
     init_bypassDyldLibValidation();
@@ -135,23 +179,6 @@ int main(int argc, char * argv[]) {
     const char *appExecPath = appBundle.executablePath.fileSystemRepresentation;
     *path = appExecPath;
     overwriteExecPath(appExecPath);
-
-    // Create a new HOME for guest app inside the runtime's shared container
-    NSString *homeDir = NSHomeDirectory();
-    NSString *guestHomeDir = [homeDir stringByAppendingPathComponent:appBundle.bundleIdentifier];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:guestHomeDir]) {
-        NSError *error = nil;
-        [[NSFileManager defaultManager] createDirectoryAtPath:guestHomeDir withIntermediateDirectories:YES attributes:nil error:&error];
-        if (error) {
-            NSLog(@"Failed to create guest home directory: %@", error);
-        } else {            NSLog(@"Successfully created guest home directory at %@", guestHomeDir);
-        }
-    }
-
-    // Single instance per guest (see acquireGuestLock).
-    if (acquireGuestLock(guestHomeDir) < 0) {
-        return 2;
-    }
 
     setenv("HOME", guestHomeDir.UTF8String, 1);
     setenv("CFFIXED_USER_HOME", guestHomeDir.UTF8String, 1);
@@ -177,9 +204,8 @@ int main(int argc, char * argv[]) {
     PlayCoverRuntimeInit(appBundle);
 
     NSMutableArray<NSString *> *objcArgv = NSProcessInfo.processInfo.arguments.mutableCopy;
-    // Strip the host's private --launch-app <name> and --keychain-slot <N>
-    // tokens so the guest sees a clean argument list.
-    for (NSString *flag in @[@"--launch-app", @"--keychain-slot"]) {
+    // Strip the host's private options so the guest sees a clean argument list.
+    for (NSString *flag in @[@"--launch-app", @"--keychain-slot", @"--playcover-incoming"]) {
         NSUInteger flagIdx = [objcArgv indexOfObject:flag];
         if (flagIdx != NSNotFound) {
             NSUInteger len = MIN((NSUInteger)2, objcArgv.count - flagIdx);

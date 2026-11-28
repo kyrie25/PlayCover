@@ -14,9 +14,16 @@ struct UpdateSettings: View {
 
     var body: some View {
         Form {
-            Toggle("preferences.toggle.automaticUpdates", isOn: $autoUpdate)
-            Button("preferences.button.checkForUpdates") {
-                updaterViewModel.checkForUpdates()
+            if updaterViewModel.manualUpdatesOnly {
+                Text("This Nightly updates manually.")
+                if let url = UpdaterViewModel.nightlyBuildsURL {
+                    Link("Download Nightly Builds", destination: url)
+                }
+            } else {
+                Toggle("preferences.toggle.automaticUpdates", isOn: $autoUpdate)
+                Button("preferences.button.checkForUpdates") {
+                    updaterViewModel.checkForUpdates()
+                }
             }
         }
         .padding(20)

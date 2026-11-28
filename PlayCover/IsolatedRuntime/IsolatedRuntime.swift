@@ -9,7 +9,7 @@ private func runtimeDylibify(_ source: UnsafePointer<CChar>, _ destination: Unsa
 enum IsolatedRuntime {
     private struct GuestSpec {
         let bundleID, executableName, installName, displayName: String
-        let source, home: URL
+        let source: URL
         let width, height: Int
         let resizable: Bool
         let icon: Data?
@@ -19,6 +19,9 @@ enum IsolatedRuntime {
     static func launch(_ app: PlayApp) async throws -> Process {
         let bundleIdentifier = app.info.bundleIdentifier
         try validateBundleID(bundleIdentifier)
+        guard app.isolatedProcess?.isRunning != true else {
+            throw "This game is already running. Quit it before launching again."
+        }
         guard app.hasPlayTools() else {
             throw "Install this app with PlayTools before enabling the isolated runtime."
         }
@@ -42,14 +45,14 @@ enum IsolatedRuntime {
         return try await Task.detached(priority: .userInitiated) {
             guard let runtime = try RuntimeProvisioning.resolveRuntimeBundle(
                     resources: resources, artifactsDirectory: artifacts, buildIfMissing: true),
-                  let runtimeID = runtime.bundleIdentifier,
+                  runtime.bundleIdentifier != nil,
                   let executable = runtime.executableURL else {
                 throw "The isolated runtime is missing from this PlayCover build."
             }
             let spec = GuestSpec(
                 bundleID: bundleIdentifier, executableName: executableName,
                 installName: bundleIdentifier + ".app", displayName: displayName,
-                source: source, home: dataHome(for: runtimeID),
+                source: source,
                 width: display.windowWidth, height: display.windowHeight,
                 resizable: display.resolution == 6, icon: icon, discordSettings: display.discordActivity)
             return try prepareAndLaunch(spec, runtime: runtime, executableName: executable.lastPathComponent,
@@ -61,19 +64,20 @@ enum IsolatedRuntime {
         _ spec: GuestSpec, runtime: Bundle, executableName: String, resources: URL
     ) throws -> Process {
         let fileManager = FileManager.default
-        let guestHome = spec.home.appendingPathComponent(spec.bundleID)
         let logs = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
         let registry = fileManager.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/BaseiOSApp/keychain_slots.plist")
         let slot = try RuntimeKeychainSlots.ensureSlot(for: spec.bundleID, registryURL: registry)
-        try fileManager.createDirectory(at: guestHome, withIntermediateDirectories: true)
-        let lock = try acquireLaunchLock(at: guestHome)
-        defer { close(lock) }
         let profile = try RuntimeProvisioning.profile(for: runtime.bundleURL,
             cacheDirectory: logs.appendingPathComponent("Provisioning.noindex"),
             helper: resources.appendingPathComponent("RuntimeProvisioning/renew.sh"))
-        try prepareGuestBundle(spec)
-        try fileManager.createDirectory(at: logs, withIntermediateDirectories: true)
+        let incomingID = UUID().uuidString
+        let incoming = logs.appendingPathComponent("Incoming.noindex").appendingPathComponent(incomingID + ".noindex")
+        var launched = false
+        defer { if !launched { try? fileManager.removeItem(at: incoming) } }
+        try fileManager.createDirectory(at: incoming, withIntermediateDirectories: true,
+                                        attributes: [.posixPermissions: 0o700])
+        try prepareGuestBundle(spec, at: incoming.appendingPathComponent(spec.installName))
         let namedRuntime = try personalizedRuntime(runtime, profile: profile, name: spec.displayName, icon: spec.icon,
             folder: logs.appendingPathComponent(spec.bundleID + ".noindex"))
         // Game Mode resolves the runtime ID through LaunchServices, which
@@ -83,29 +87,16 @@ enum IsolatedRuntime {
         LSRegisterURL(namedRuntime as CFURL, true)
         let binary = namedRuntime.appendingPathComponent("Contents/MacOS").appendingPathComponent(executableName)
         let logURL = logs.appendingPathComponent(spec.bundleID + "-runtime.log")
-        let process = try startProcess(executable: binary, spec: spec, slot: slot, logURL: logURL, lock: lock)
+        let process = try startProcess(executable: binary, spec: spec, slot: slot, logURL: logURL,
+                                       incoming: incoming)
+        launched = true
         Log.shared.log("Launched \(spec.bundleID) with isolated runtime + PlayTools " +
                        "(PID \(process.processIdentifier)).")
         return process
     }
 
-    private static func acquireLaunchLock(at guestHome: URL) throws -> Int32 {
-        let lock = open(guestHome.appendingPathComponent(".guest.lock").path, O_RDWR | O_CREAT, 0o600)
-        guard lock >= 0 else { throw "Could not open the isolated runtime's launch lock." }
-        guard flock(lock, LOCK_EX | LOCK_NB) == 0 else {
-            close(lock)
-            throw "This game is already running. Quit it before launching again."
-        }
-        return lock
-    }
-
-    private static func prepareGuestBundle(_ spec: GuestSpec) throws {
+    private static func prepareGuestBundle(_ spec: GuestSpec, at staging: URL) throws {
         let fileManager = FileManager.default
-        let apps = spec.home.appendingPathComponent("apps.noindex")
-        let target = apps.appendingPathComponent(spec.installName)
-        try fileManager.createDirectory(at: apps, withIntermediateDirectories: true)
-        let staging = apps.appendingPathComponent(UUID().uuidString + ".noindex")
-        defer { try? fileManager.removeItem(at: staging) }
         // Clone unchanged files on APFS while keeping the original executable for standard mode.
         let copyFlags = copyfile_flags_t(COPYFILE_ALL | COPYFILE_RECURSIVE | COPYFILE_CLONE)
         guard copyfile(spec.source.path, staging.path, nil, copyFlags) == 0 else {
@@ -134,30 +125,18 @@ enum IsolatedRuntime {
         try Shell.signApp(guestExec)
         // Match IPA installation: only the generated copy loses quarantine.
         _ = try? Shell.run(print: false, "/usr/bin/xattr", "-r", "-d", "com.apple.quarantine", staging.path)
-        if fileManager.fileExists(atPath: target.path) {
-            _ = try fileManager.replaceItemAt(target, withItemAt: staging)
-        } else {
-            try fileManager.moveItem(at: staging, to: target)
-        }
-        let legacy = spec.home.appendingPathComponent("apps").appendingPathComponent(spec.installName)
-        if let features = NSDictionary(contentsOf: legacy.appendingPathComponent("RunnerFeatures.plist")),
-           features["playCoverWidth"] != nil {
-            _ = try? Shell.run(print: false, "/System/Library/Frameworks/CoreServices.framework/" +
-                               "Frameworks/LaunchServices.framework/Support/lsregister", "-u", legacy.path)
-            try fileManager.removeItem(at: legacy)
-        }
-        try Data().write(to: apps.appendingPathComponent(".metadata_never_index"))
     }
 
     private static func startProcess(
-        executable: URL, spec: GuestSpec, slot: Int, logURL: URL, lock: Int32
+        executable: URL, spec: GuestSpec, slot: Int, logURL: URL, incoming: URL
     ) throws -> Process {
         FileManager.default.createFile(atPath: logURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
         let output = try FileHandle(forWritingTo: logURL)
         defer { try? output.close() }
         let process = Process()
         process.executableURL = executable
-        process.arguments = ["--launch-app", spec.installName, "--keychain-slot", String(slot)]
+        process.arguments = ["--launch-app", spec.installName, "--keychain-slot", String(slot),
+                             "--playcover-incoming", incoming.deletingPathExtension().lastPathComponent]
         process.environment = ProcessInfo.processInfo.environment.filter {
             !$0.key.hasPrefix("DYLD_") && !$0.key.hasPrefix("MTL_") && !$0.key.hasPrefix("METAL_")
         }
@@ -166,12 +145,14 @@ enum IsolatedRuntime {
         let discord = IsolatedDiscordActivity.connection(enabled: spec.discordSettings.enable)
         process.terminationHandler = { task in
             discord?.cancel()
-            if task.terminationStatus != 0 {
+            try? FileManager.default.removeItem(at: incoming)
+            if task.terminationReason == .exit && task.terminationStatus == 2 {
+                Log.shared.error("This game is already running. Quit it before launching again.")
+            } else if task.terminationStatus != 0 {
                 Log.shared.error("The isolated runtime exited with status \(task.terminationStatus). " +
                                  "See \(logURL.path) and Console's Runtime-Catalyst messages.")
             }
         }
-        flock(lock, LOCK_UN)
         try process.run()
         if let discord {
             Task {

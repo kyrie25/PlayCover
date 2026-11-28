@@ -35,7 +35,13 @@ jobs:
 
       - name: Update Carthage dependencies
         shell: bash
-        run: carthage update --use-xcframeworks
+        env:
+          FASTLANE: "1"
+        run: |
+          if ! carthage update --use-xcframeworks; then
+            find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'carthage-xcodebuild.*.log' -exec tail -n 100 {} +
+            exit 1
+          fi
 
       - name: Build PlayCover Nightly
         shell: bash

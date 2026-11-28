@@ -5,6 +5,7 @@
 //  Created by TheMoonThatRises on 9/26/22.
 //
 
+import Darwin
 import SwiftUI
 
 struct CheckBoxHelper {
@@ -108,7 +109,12 @@ class Uninstaller {
         }
     }
 
+    @MainActor
     static func uninstall(_ app: PlayApp) async {
+        guard !app.isStarting else {
+            Log.shared.error("Quit the game before uninstalling it.")
+            return
+        }
         var uninstallNum = 0
 
         if UninstallPreferences.shared.clearAppData {
@@ -172,46 +178,129 @@ class Uninstaller {
         await clearCache(of: app)
     }
 
+    @MainActor
     static func clearCache(of app: PlayApp) async {
+        guard !app.isStarting else {
+            Log.shared.error("Quit the game before clearing its data.")
+            return
+        }
         await app.clearAllCache()
     }
 
     static func clearExternalCache(_ bundleId: String) {
-        do {
-            for cache in cacheURLs {
-                cache.enumerateContents(options: [.skipsSubdirectoryDescendants]) { file, _ in
-                    if file.path.contains(bundleId) {
-                        try FileManager.default.trashItem(at: file, resultingItemURL: nil)
-                    }
+        let files = FileManager.default
+        var firstError: Error?
+        for cache in cacheURLs {
+            guard files.fileExists(atPath: cache.path),
+                  let entries = try? files.contentsOfDirectory(at: cache, includingPropertiesForKeys: nil) else {
+                continue
+            }
+            for file in entries where matchesBundle(file.lastPathComponent, bundleId: bundleId) {
+                do {
+                    try removeTree(at: file, allowProtectedRemainder: true)
+                } catch {
+                    firstError = firstError ?? error
                 }
             }
         }
+        if let firstError {
+            Log.shared.error(firstError)
+        }
     }
 
+    @MainActor
     static func pruneFiles() {
         do {
-            let bundleIds = AppsVM.shared.apps.map { $0.info.bundleIdentifier }
-            let danglingItems = try PlayApp.bundleIDCache.filter { !bundleIds.contains($0) }
+            let files = FileManager.default
+            var installed = Set(AppsVM.shared.apps.map { $0.info.bundleIdentifier.lowercased() })
+            // The library model can still be refreshing when Preferences is open.
+            for app in try files.contentsOfDirectory(at: AppsVM.appDirectory, includingPropertiesForKeys: nil)
+                where app.pathExtension.lowercased() == "app" {
+                installed.insert(app.deletingPathExtension().lastPathComponent.lowercased())
+                if let id = Bundle(url: app)?.bundleIdentifier { installed.insert(id.lowercased()) }
+            }
+            let cacheExists = files.fileExists(atPath: PlayApp.bundleIDCacheURL.path)
+            let cached = cacheExists ? try PlayApp.bundleIDCache : []
+            let danglingItems = Set(cached.filter { !installed.contains($0.lowercased()) })
 
             var fullPruneURLs = pruneURLs
             fullPruneURLs.append(contentsOf: cacheURLs)
 
-            var prunedIds: [String] = []
-
+            var prunedIds = Set<String>()
             for url in fullPruneURLs {
-                url.enumerateContents(options: [.skipsSubdirectoryDescendants]) { file, _ in
-                    let bundleId = file.deletingPathExtension().lastPathComponent
-                    if danglingItems.contains(bundleId) {
-                        try FileManager.default.trashItem(at: file, resultingItemURL: nil)
-                        prunedIds.append(bundleId)
+                guard files.fileExists(atPath: url.path) else { continue }
+                for file in try files.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) {
+                    if let bundleId = danglingItems.first(where: {
+                        matchesBundle(file.lastPathComponent, bundleId: $0)
+                    }) {
+                        try removeTree(at: file, allowProtectedRemainder: true)
+                        prunedIds.insert(bundleId)
                     }
                 }
             }
 
-            try "\(PlayApp.bundleIDCache.filter({ !Set(prunedIds).contains($0) }).joined(separator: "\n"))\n"
-                .write(to: PlayApp.bundleIDCacheURL, atomically: false, encoding: .utf8)
+            if !prunedIds.isEmpty {
+                try "\(PlayApp.bundleIDCache.filter { !prunedIds.contains($0) }.joined(separator: "\n"))\n"
+                    .write(to: PlayApp.bundleIDCacheURL, atomically: true, encoding: .utf8)
+            }
         } catch {
             Log.shared.error(error)
         }
+    }
+}
+
+private extension Uninstaller {
+    static func matchesBundle(_ name: String, bundleId: String) -> Bool {
+        name == bundleId || name.hasPrefix(bundleId + ".")
+    }
+
+    /// Removes `url` without following symlinks. On modern macOS, `containermanagerd`
+    /// protects container roots, metadata plists, and WebKit caches with EPERM; when
+    /// `allowProtectedRemainder` is true, removable contents are still purged instead
+    /// of aborting at the first protected file.
+    static func removeTree(at url: URL, allowProtectedRemainder: Bool = false) throws {
+        guard let kind = try entryType(of: url) else { return }
+        if kind != S_IFDIR {
+            if unlink(url.path) == 0 || errno == ENOENT { return }
+            if allowProtectedRemainder && (errno == EPERM || errno == EACCES) { return }
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        do {
+            try FileManager.default.removeItem(at: url)
+        } catch where allowProtectedRemainder && isPermissionError(error) {
+            let children = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+            for child in children {
+                do {
+                    try removeTree(at: child, allowProtectedRemainder: true)
+                } catch where isPermissionError(error) {
+                    continue
+                }
+            }
+            if rmdir(url.path) != 0 && errno != ENOENT && errno != ENOTEMPTY && errno != EPERM && errno != EACCES {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+        }
+    }
+
+    static func entryType(of url: URL) throws -> mode_t? {
+        var data = stat()
+        if lstat(url.path, &data) == 0 { return data.st_mode & S_IFMT }
+        if errno == ENOENT { return nil }
+        throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+
+    static func isPermissionError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        if nsError.domain == NSPOSIXErrorDomain {
+            return nsError.code == Int(EPERM) || nsError.code == Int(EACCES)
+        }
+        if nsError.domain == NSCocoaErrorDomain &&
+            (nsError.code == NSFileWriteNoPermissionError || nsError.code == NSFileReadNoPermissionError) {
+            return true
+        }
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isPermissionError(underlying)
+        }
+        return false
     }
 }

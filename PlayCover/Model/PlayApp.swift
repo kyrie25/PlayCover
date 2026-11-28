@@ -64,6 +64,7 @@ class PlayApp: BaseApp {
     func launch() async {
         do {
             isStarting = true
+            defer { isStarting = false }
 
             if prohibitedToPlay {
                 await clearAllCache()
@@ -82,6 +83,7 @@ class PlayApp: BaseApp {
             // assembled before its signature is sealed over its contents.
             // If the app does not have PlayTools, do not install PlugIns
             if hasPlayTools() {
+                try await PlayTools.waitForInstallation()
                 try PlayTools.installPluginInIPA(url)
             }
 
@@ -115,7 +117,6 @@ class PlayApp: BaseApp {
                     runAppExec() // Splitting to reduce complexity
                 }
             }
-            isStarting = false
         } catch {
             Log.shared.error(error)
         }

@@ -33,9 +33,9 @@ jobs:
           test "$(uname -m)" = arm64
           brew install carthage
 
-      - name: Bootstrap Carthage dependencies
+      - name: Update Carthage dependencies
         shell: bash
-        run: carthage bootstrap --use-xcframeworks
+        run: carthage update --use-xcframeworks
 
       - name: Build PlayCover Nightly
         shell: bash

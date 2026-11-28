@@ -1,8 +1,6 @@
 import AppKit
-import CryptoKit
 import CoreServices
 import Darwin
-import Security
 
 @_silgen_name("dylibify")
 private func runtimeDylibify(_ source: UnsafePointer<CChar>, _ destination: UnsafePointer<CChar>) -> Int32
@@ -27,10 +25,7 @@ enum IsolatedRuntime {
         guard !app.settings.settings.playChain else {
             throw "Disable PlayChain when using the isolated runtime; it supplies its own keychain."
         }
-        guard let resources = Bundle.main.resourceURL,
-              let runtime = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app")),
-              let runtimeID = runtime.bundleIdentifier,
-              let executable = runtime.executableURL else {
+        guard let resources = Bundle.main.resourceURL, RuntimeProvisioning.hasRuntimeSupport(in: resources) else {
             throw "The isolated runtime is missing from this PlayCover build."
         }
 
@@ -39,16 +34,26 @@ enum IsolatedRuntime {
             at: app.url, bundleIdentifier: bundleIdentifier,
             bundleVersion: app.info.bundleVersion, primaryIconName: app.info.primaryIconName)
             .flatMap { dockIcon($0).tiffRepresentation }
-        let spec = GuestSpec(
-            bundleID: bundleIdentifier, executableName: app.info.executableName,
-            installName: bundleIdentifier + ".app", displayName: app.name,
-            source: app.url, home: dataHome(for: runtimeID),
-            width: display.windowWidth, height: display.windowHeight,
-            resizable: display.resolution == 6, icon: icon, discordSettings: display.discordActivity)
+        let source = app.url
+        let executableName = app.info.executableName
+        let displayName = app.name
+        let artifacts = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
 
         return try await Task.detached(priority: .userInitiated) {
-            try prepareAndLaunch(spec, runtime: runtime, executableName: executable.lastPathComponent,
-                                 resources: resources)
+            guard let runtime = try RuntimeProvisioning.resolveRuntimeBundle(
+                    resources: resources, artifactsDirectory: artifacts, buildIfMissing: true),
+                  let runtimeID = runtime.bundleIdentifier,
+                  let executable = runtime.executableURL else {
+                throw "The isolated runtime is missing from this PlayCover build."
+            }
+            let spec = GuestSpec(
+                bundleID: bundleIdentifier, executableName: executableName,
+                installName: bundleIdentifier + ".app", displayName: displayName,
+                source: source, home: dataHome(for: runtimeID),
+                width: display.windowWidth, height: display.windowHeight,
+                resizable: display.resolution == 6, icon: icon, discordSettings: display.discordActivity)
+            return try prepareAndLaunch(spec, runtime: runtime, executableName: executable.lastPathComponent,
+                                        resources: resources)
         }.value
     }
 
@@ -197,18 +202,24 @@ enum IsolatedRuntime {
               NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty else {
             throw "Quit the game before switching runtimes."
         }
-        guard let resources = Bundle.main.resourceURL,
-              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
-        else { throw "The isolated runtime is missing from this PlayCover build." }
-
-        let home = dataHome(for: runtimeID)
-        let isolated = home.appendingPathComponent(bundleID)
+        guard let resources = Bundle.main.resourceURL, RuntimeProvisioning.hasRuntimeSupport(in: resources) else {
+            throw "The isolated runtime is missing from this PlayCover build."
+        }
         let standard = app.container.containerUrl.appendingPathComponent("Data")
+        let artifacts = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
         let moveKey = bundleID.lowercased()
         switchingGames.insert(moveKey)
         defer { switchingGames.remove(moveKey) }
 
         try await Task.detached(priority: .userInitiated) {
+            let resolved = try RuntimeProvisioning.resolveRuntimeBundle(
+                resources: resources, artifactsDirectory: artifacts, buildIfMissing: enabled)?.bundleIdentifier
+            guard let runtimeID = resolved
+                    ?? RuntimeProvisioning.knownRuntimeID(resources: resources, artifactsDirectory: artifacts) else {
+                throw "The isolated runtime is missing from this PlayCover build."
+            }
+            let home = dataHome(for: runtimeID)
+            let isolated = home.appendingPathComponent(bundleID)
             let lock = try RuntimeUninstall.lockGuest(at: isolated)
             defer { if let lock { close(lock) } }
             try await RuntimeDataMigration.move(from: enabled ? standard : isolated,
@@ -219,6 +230,12 @@ enum IsolatedRuntime {
         }.value
         app.removeAlias()
         app.createAlias()
+    }
+
+    private static func knownRuntimeID() -> String? {
+        RuntimeProvisioning.knownRuntimeID(
+            resources: Bundle.main.resourceURL,
+            artifactsDirectory: PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime"))
     }
 
     private static func dataHome(for runtimeID: String) -> URL {
@@ -235,20 +252,18 @@ enum IsolatedRuntime {
             throw "The app has an invalid bundle identifier."
         }
     }
+}
 
+extension IsolatedRuntime {
     static func dataDirectory(for bundleID: String) -> URL? {
-        guard let resources = Bundle.main.resourceURL,
-              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
-        else { return nil }
+        guard let runtimeID = knownRuntimeID() else { return nil }
         return dataHome(for: runtimeID).appendingPathComponent(bundleID)
     }
 
     @MainActor
     static func clearData(for bundleID: String) throws {
         guard !isSwitchingRuntime(for: bundleID) else { throw "Wait for this game's data to finish moving." }
-        guard let resources = Bundle.main.resourceURL,
-              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
-        else { return }
+        guard let runtimeID = knownRuntimeID() else { return }
         let home = dataHome(for: runtimeID)
         guard FileManager.default.fileExists(atPath: home.deletingLastPathComponent().path) else { return }
         try RuntimeUninstall.clearData(bundleID: bundleID, home: home)
@@ -259,9 +274,7 @@ enum IsolatedRuntime {
         guard !isSwitchingRuntime(for: bundleID) else { throw "Wait for this game's data to finish moving." }
         let files = FileManager.default
         let artifacts = PlayTools.playCoverContainer.appendingPathComponent("IsolatedRuntime")
-        guard let resources = Bundle.main.resourceURL,
-              let runtimeID = Bundle(url: resources.appendingPathComponent("Runtime-Catalyst.app"))?.bundleIdentifier
-        else { return }
+        guard let runtimeID = knownRuntimeID() else { return }
         let home = dataHome(for: runtimeID)
         let hasRuntimeContainer = files.fileExists(atPath: home.deletingLastPathComponent().path)
         let hasArtifacts = files.fileExists(atPath: artifacts.appendingPathComponent(bundleID + ".noindex").path)
@@ -337,7 +350,8 @@ extension IsolatedRuntime {
         }
         try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(to: infoURL)
         // Retain the signed identifier and its sandbox/native-keychain identity.
-        try Shell.run(print: false, "/usr/bin/codesign", "--force", "--sign", signingIdentity(for: runtime.bundleURL),
+        let identity = try RuntimeProvisioning.signingIdentity(for: runtime.bundleURL)
+        try Shell.run(print: false, "/usr/bin/codesign", "--force", "--sign", identity,
                       "--preserve-metadata=identifier,entitlements,requirements,flags,runtime", copy.path)
         try Shell.run(print: false, "/usr/bin/codesign", "--verify", "--deep", "--strict", copy.path)
         if fileManager.fileExists(atPath: folder.path) {
@@ -346,22 +360,6 @@ extension IsolatedRuntime {
             try fileManager.moveItem(at: staging, to: folder)
         }
         return folder.appendingPathComponent(copy.lastPathComponent)
-    }
-
-    private static func signingIdentity(for runtime: URL) throws -> String {
-        var code: SecStaticCode?
-        var information: CFDictionary?
-        guard SecStaticCodeCreateWithPath(runtime as CFURL, [], &code) == errSecSuccess,
-              let code,
-              SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation),
-                                            &information) == errSecSuccess,
-              let certificates = (information as? [String: Any])?[kSecCodeInfoCertificates as String]
-                as? [SecCertificate],
-              let certificate = certificates.first else {
-            throw "The isolated runtime needs a development signing identity. Rebuild it with your development team."
-        }
-        return Insecure.SHA1.hash(data: SecCertificateCopyData(certificate) as Data)
-            .map { String(format: "%02X", $0) }.joined()
     }
 
     private static func iconFile(_ image: Data) -> Data? {

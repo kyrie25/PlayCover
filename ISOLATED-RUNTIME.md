@@ -204,6 +204,26 @@ The existing framework/Sparkle signing phase now uses
 to `codesign`. No personal identity, team identifier, certificate, provisioning
 profile, or development account is committed by this adaptation.
 
+### CI Nightly signing and on-demand local runtime builds
+
+GitHub Actions Nightly builds (`.github/workflows/2.nightly_release.yml`) sign
+`PlayCover.app` with a persistent self-signed project certificate
+(`Scripts/codesign.pem`, backed by `PLAYCOVER_CODESIGN_P12` and
+`PLAYCOVER_CODESIGN_PASSWORD` repository secrets) via `Scripts/sign-macos.sh`,
+retaining stable designated-requirement Keychain identity without storing any
+personal Apple account credentials in CI.
+
+Because `Runtime-Catalyst.app` uses restricted entitlements
+(`keychain-access-groups`, `com.apple.developer.game-center`) that macOS AMFI
+only permits with an Apple-signed provisioning profile, CI builds set
+`PLAYCOVER_DEFER_RUNTIME_BUILD=1` and bundle the Catalyst runtime sources under
+`Contents/Resources/IsolatedRuntimeSource/`. On a Mac with Xcode signed into an
+Apple Account, PlayCover compiles and signs `Runtime-Catalyst.app` locally into
+`IsolatedRuntime/Template.noindex/Runtime-Catalyst.app` on first isolated launch
+(or when enabling **Use isolated runtime**), rebuilding automatically if the
+bundled sources change while preserving the user's development team and
+existing game data.
+
 ### Automatic profile renewal
 
 On each isolated launch, PlayCover checks the embedded Catalyst profile before

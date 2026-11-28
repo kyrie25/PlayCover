@@ -1,65 +1,91 @@
 name: Build nightly release
+
 on:
   workflow_dispatch:
   schedule:
     - cron: "30 19 * * *"
+
+permissions:
+  contents: read
+
 env:
   CI: true
+
 jobs:
   build:
-    runs-on: macos-latest
-    env:
-      GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: macos-26
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          brew install swiftlint
-          gem install fastlane
-          bundle install
-          pip install setuptools
-          npm install https://github.com/PlayCover/create-dmg
-
-      - name: Set build number
-        shell: bash
-        run: |
-          fastlane run increment_build_number build_number:${{ github.run_number }}
-
-      - name: Fastlane Nightly
-        shell: bash
-        run: fastlane nightly
+      - name: Verify stable signing and Keychain continuity
         env:
-          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: 120 # x86 is slooooooow
+          PLAYCOVER_CODESIGN_P12: ${{ secrets.PLAYCOVER_CODESIGN_P12 }}
+          PLAYCOVER_CODESIGN_PASSWORD: ${{ secrets.PLAYCOVER_CODESIGN_PASSWORD }}
+        run: bash Scripts/test-macos-signing.sh
 
-      - name: Extract API_KEY
+      - name: Install build dependencies
         shell: bash
-        run: 'echo "$API_KEY" > apikey.json'
+        run: |
+          test "$(uname -m)" = arm64
+          brew install carthage
+
+      - name: Bootstrap Carthage dependencies
+        shell: bash
+        run: carthage bootstrap --use-xcframeworks
+
+      - name: Build PlayCover Nightly
+        shell: bash
         env:
-          API_KEY: ${{secrets.APPLE_API_KEY_JSON}}
+          FASTLANE: "1"
+          PLAYCOVER_DEFER_RUNTIME_BUILD: "1"
+        run: |
+          xcodebuild -project PlayCover.xcodeproj -scheme PlayCover \
+            -configuration Nightly -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath build.noindex/DerivedData \
+            -clonedSourcePackagesDirPath build.noindex/SourcePackages \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER='' \
+            DEVELOPMENT_TEAM='' \
+            ENABLE_HARDENED_RUNTIME=YES \
+            build
 
-      - name: Create DMG
+      - name: Sign PlayCover with persistent identity
+        env:
+          PLAYCOVER_CODESIGN_P12: ${{ secrets.PLAYCOVER_CODESIGN_P12 }}
+          PLAYCOVER_CODESIGN_PASSWORD: ${{ secrets.PLAYCOVER_CODESIGN_PASSWORD }}
+        run: bash Scripts/sign-macos.sh build.noindex/DerivedData/Build/Products/Nightly/PlayCover.app
+
+      - name: Package and verify DMG
         shell: bash
         run: |
-          npx create-dmg ./output/PlayCover.app ./output
-          mv ./output/*.dmg ./output/PlayCover_nightly_${{ github.run_number }}.dmg
+          set -euo pipefail
+          mkdir -p output dmg-stage
+          /usr/bin/ditto build.noindex/DerivedData/Build/Products/Nightly/PlayCover.app dmg-stage/PlayCover.app
+          ln -s /Applications dmg-stage/Applications
+          DMG="output/PlayCover_nightly_${{ github.run_number }}.dmg"
+          /usr/bin/hdiutil create -volname "PlayCover" -srcfolder dmg-stage -ov -format UDZO "$DMG"
 
-      - name: Notarize DMG
-        continue-on-error: true
-        shell: bash
-        run: |
-          fastlane notarize_dmg package:output/PlayCover_nightly_${{ github.run_number }}.dmg
-
-      - name: Clean Up
-        shell: bash
-        run: rm apikey.json
+          MOUNT=$(mktemp -d "${TMPDIR:-/tmp}/playcover-dmg.XXXXXX")
+          trap '/usr/bin/hdiutil detach "$MOUNT" -quiet >/dev/null 2>&1 || true; rm -rf "$MOUNT"' EXIT
+          /usr/bin/hdiutil attach "$DMG" -mountpoint "$MOUNT" -nobrowse -readonly -quiet
+          FINGERPRINT=$(/usr/bin/openssl x509 -in Scripts/codesign.pem -noout -fingerprint -sha1 | /usr/bin/sed 's/.*=//;s/://g')
+          /usr/bin/codesign --verify --deep --strict \
+            -R "=identifier \"io.playcover.PlayCover\" and certificate leaf = H\"$FINGERPRINT\"" \
+            "$MOUNT/PlayCover.app"
+          test -f "$MOUNT/PlayCover.app/Contents/Resources/IsolatedRuntimeSource/build-local.sh"
+          test -x "$MOUNT/PlayCover.app/Contents/Resources/GameLauncher"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v7
         with:
           name: PlayCover_nightly_${{ github.run_number }}.dmg
           path: output/PlayCover_nightly_${{ github.run_number }}.dmg
+          if-no-files-found: error
+          retention-days: 14
